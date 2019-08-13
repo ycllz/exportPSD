@@ -1,12 +1,16 @@
 ﻿
 /**
     Author:ycllz
-    code time:2019 year/8 month/12 day
-    
-    */
+    code time:2019 year/8 month/12 day  
+*/
 
 
 /***************************************** 配置 可以修改配置*******************************************************/
+/**
+        
+    
+    */
+
 
 /**导出图片的质量，80是 80%*/
 var imageQuality = 80;
@@ -21,21 +25,64 @@ var rootPath = ""//"E:/microtrunk/resource/总美术上传文件/ui/";
 var imagePath = rootPath + "assets/";
 
 
-/************************************************ 通用组件，需要加的时候让前端加 ***************************************************************/
+/************************************************ 通用组件，需要加的时候让前端加 **************************************/
 
-var componentsName = ["txt", "list", "item", "checkbox", "btn", "price", "ItemBaseSkin", "ItemIconSkin", "power"];
+/** componentList（自定义的） 跟 egretComponents（egret的组件） 两个就已经包括了所有组件，
+//还有一种是图片对应的自定义组件 image2ComponentMap
+
+//componentListMap
+//egretComponentsMap
+//image2ComponentMap
+*/
+
+/**
+ * 使用的是固定皮肤
+ * 
+ * 这些全部搞到一张图片那里给美术对照着，也搞个文本文件给美术，容易复制名称，不然美术敲错咋办
+ * （后期抽出来做成配置来填）
+ */
+var componentList = ["CommonBtn1_1Skin", "CommonBtn1_2Skin", "CommonBtn1_3Skin", "CommonBtn1_4Skin",
+"CommonBtn2_1Skin", "CommonBtn2_2Skin", "CommonBtn2_3Skin", "CommonBtn2_4Skin",
+"bar1Skin", "bar1Skin_1", "bar21Skin", "bar20Skin", "bar19Skin", "bar18Skin", "bar17Skin", "bar16Skin", "bar15Skin",
+"CheckBox0", "CheckBox2", "CheckBox3", "CheckBox4",
+ "ItemBaseSkin", "ItemIconSkin", "PriceIconSkin", "PowerLabelSkin"];
+
+/**
+ * @list list_v_x：x列纵向滚动，行是无限的  ；list_h_y：y行横向滚动，列是无限的
+ */
+var egretComponents = ["list", "item", "txt"];
+
+/**这个先不管，已经跟通用的自定义组件重合了 */
+var commonComponents = [ "checkbox", "btn", "bar", "power", "price"];
 
 /******************************************* 程序 不能改 **********************************************************/
 
-var commonComponent;
-var components;
+var image2ComponentMap;//图片对应的组件 BG 这类背景图组件
 
-
-var scaleImage = 1;
-var slantingBar = "/";
+/**
+ * componentList
+ * 如果该图层是已经制作出来的组件，直接skinname直接就是这个组件
+ */
+var componentListMap;
+/**
+ * commonComponents
+ * 默认通用的组件 btn 命名的psd图层使用 CommonBtn1_1Skin 等默认
+ */
+var commonComponentMap;
+/**
+ * egretComponents
+ */
+var egretComponentsMap;
 
 var BGLen = 50;
+var scaleImage = 1;
 
+var slantingBar = "/";
+var lineBreaks = "\n"
+var tabsDeep = ["","\t", "\t\t", "\t\t\t", "\t\t\t\t", "\t\t\t\t\t", "\t\t\t\t\t\t", "\t\t\t\t\t\t\t", "\t\t\t\t\t\t\t\t"]
+var deepIndex = 1;
+
+var fileBaseName = "";
 var exportString = "";
 
 initData();
@@ -43,23 +90,35 @@ initData();
 init();
 
 function initData(){
-    commonComponent = {}
-    commonComponent["ui_cm_p_0@2_0_2_0_png"] = "BG";
-    commonComponent["ui_cm_p@215_36_215_20_png"] = "BG2";
-    commonComponent["ui_cm_34@65_0_65_0_png"] = "BG16";
-    commonComponent["ui_cm_19@62_51_62_51_png"] = "BG17";
+    image2ComponentMap = {}//如果图片名称是这些的，就用这些组件
+    image2ComponentMap["ui_cm_p_0@2_0_2_0_png"] = "BG";
+    image2ComponentMap["ui_cm_p@215_36_215_20_png"] = "BG2";
+    image2ComponentMap["ui_cm_34@65_0_65_0_png"] = "BG16";
+    image2ComponentMap["ui_cm_19@62_51_62_51_png"] = "BG17";
     
-    components = {}
-    var comLen = componentsName.length;
-    for(var i=0; i<comLen; i++){
-        components[componentsName[i]] = componentsName[i];
-    }
-    
-    components["BG"] = "BG";
+    commonComponentMap = {}
+    commonComponentMap["checkbox"] = "CheckBox0";
+    commonComponentMap["btn"] = "CommonBtn1_1Skin";
+    commonComponentMap["bar"] = "bar21Skin";
+    commonComponentMap["power"] = "PowerLabelSkin";
+    commonComponentMap["price"] = "PriceIconSkin";
+
+    //如果该图层是已经制作出来的组件，直接skinname直接就是这个组件
+    componentListMap = {}
+    componentListMap["BG"] = "BG";
     for(var i=2; i<=BGLen; i++){
-        components["BG"+i] = "BG"+i;
+        componentListMap["BG"+i] = "BG"+i;
     }
-    
+    for(var i=0; i<componentList.length; i++){
+        componentListMap[componentList[i]] = componentList[i];
+    }
+
+    egretComponentsMap = {};
+    var comLen = egretComponents.length;
+    for(var i=0; i<comLen; i++){
+        egretComponentsMap[egretComponents[i]] = egretComponents[i];
+    }
+
 }
 
 
@@ -76,6 +135,7 @@ function init(){
     //保存exml文件的文件名
     var name = decodeURI(app.activeDocument.name);
 	exmlFileName = name.substring(0, name.indexOf("."));
+    fileBaseName = exmlFileName;
 	var dir = rootPath + exmlFileName + slantingBar;//app.activeDocument.path + 
 
     new Folder( dir ).create();
@@ -99,6 +159,7 @@ function init(){
     }
     
     /**
+     * 皮肤格式
         
         <?xml version="1.0" encoding="utf-8"?>
         <e:Skin class="CommonDialog7Skin" width="720" height="1280" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" >
@@ -144,7 +205,7 @@ function init(){
      **/
         
     exportString = ""
-    
+    deepIndex = 1;
     var exLen = exportLayers.length;
     for(var i=0; i<exLen; i++){
         var layer = exportLayers[i]
@@ -154,62 +215,101 @@ function init(){
         var layerRealWidth = layer.bounds[2].as("px") - layer.bounds[0].as("px");
         var layerRealHeight = layer.bounds[3].as("px") - layer.bounds[1].as("px");
         
-        
             
         if(isListComponent (layer.name)){//列表，特殊的图层组
-            exportList(layer);
+            exportList(layer, 1);
         }
         else if(layer && layer.typename == "LayerSet"){//判断是否是图层组
-            exportLayerSet( layer );
+            exportLayerSet( layer, 1 );
         }
         else{//图层
-            exportArtlayer( layer );
+            exportArtlayer( layer, 1 );
         }
     }
     
 }
 
-function exportList( layer ){
+/** 列表*/
+function exportList( layer, deepIndex ){
     var xcoord = layer.bounds[0].as("px")
     var ycoord = layer.bounds[1].as("px")
     var layerRealWidth = layer.bounds[2].as("px") - layer.bounds[0].as("px");
     var layerRealHeight = layer.bounds[3].as("px") - layer.bounds[1].as("px");
     
     var str = ""
-    str = str + '<e:Scroller id="sl_scroller" x="'+ xcoord +'" y="'+ ycoord +'" width="' + layerRealWidth + '" height="' + layerRealHeight + '" >'
-    str = str + '\n\t' + '<e:List id="' + layer.name + layer.itemIndex  + '" anchorOffsetY="0" useVirtualLayout="true">'
-    str = str + '\n\t' + '<e:layout>'
-    str = str + '\n\t' + '<e:VerticalLayout gap="5"/>'
-    str = str + '\n\t' + '</e:layout>'
-    str = str + '\n\t' + '</e:List>'
-    str = str + '\n</e:Scroller>'
+    str = str + tabsDeep[deepIndex] + '<e:Scroller id="sl_scroller" x="'+ xcoord +'" y="'+ ycoord +'" width="' + layerRealWidth + '" height="' + layerRealHeight + '" >'
+    str = str + lineBreaks + tabsDeep[deepIndex+1] + '<e:List id="' + layer.name + layer.itemIndex  + '" >'
+    str = str + lineBreaks + tabsDeep[deepIndex+1] + '<e:layout>'
+    str = str + lineBreaks + tabsDeep[deepIndex+1] + '<e:VerticalLayout gap="5"/>'
+    str = str + lineBreaks + tabsDeep[deepIndex+1] + '</e:layout>'
+    str = str + lineBreaks + tabsDeep[deepIndex+1] + '</e:List>'
+    str = str + lineBreaks + tabsDeep[deepIndex] + '</e:Scroller>'
     
-    
+    exportListItem(layer);
     
     return str;
 }
 
 function exportListItem( layerSet ){
-    
-}
-
-
-function exportLayerSet( layerSet ){
-    for (var i =0; i<layers.length; i++){
-        if(layerSet[i].typename == "LayerSet"){//是否是图层组
-            getLayers( layerSet[i].layers );//递归
+    var itemLayer;
+    for (var i =0; i<layerSet.length; i++){
+        if(isItemComponent(layerSet[i].name)){
+            item = layerSet[i];
+            break;
+        }
+    }
+    /** itemIndex
+        
+        <?xml version="1.0" encoding="utf-8"?>
+        <e:Skin class="ChildEquipItemSkin" width="130" height="175" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" >
+        
+        </e:Skin>
+    */
+    var componentString = "";
+    if(itemLayer){
+        if(itemLayer.typename == "LayerSet"){//是否是图层组
+            
         }
         else{
             //一般图层
-            exportArtlayer( layerSet[i] )
+            exportArtlayer( layerSet[i])
         }
     }
 }
 
+/** 图层组*/
+function exportLayerSet( layerSet, deepIndex ){
+    
+    var layerSetString = "";
+    
+    for (var i =0; i<layerSet.length; i++){
+        if(layerSet[i].typename == "LayerSet"){//是否是图层组
+            
+            layerSetString = getLayerSetString( layerSet[i], deepIndex );
+            
+            exportLayerSet( layerSet[i].layers, deepIndex+1 );//递归
+        }
+        else{
+            //一般图层
+            exportArtlayer( layerSet[i], deepIndex )
+        }
+    }
+}
 
-function exportArtlayer( layer ){
+function getLayerSetString( layerSet, deepIndex ){
+    
+}
+
+/**一般图层*/
+function exportArtlayer( layer, deepIndex ){
     //9宫的才需要在程序中设定宽高，其他的不用
-    if(isScaleImage (layer.name)){
+    if( isScaleImage (layer) ){
+        
+    }
+    else if( isUIPicture(layer) ){
+        
+    }
+    else if( isTxt(layer) ){
         
     }
 }
@@ -218,6 +318,94 @@ function exportArtlayer( layer ){
 
 function exportFile(){
 
+}
+
+/** "txt", "checkbox", "btn", "bar", "price"
+    "ItemBaseSkin", "ItemIconSkin", "power"
+    
+***/
+function getExportLayerString( layer, deepIndex ){
+    if(isTxt (layer)){
+        
+    }
+    else if(isScaleImage (layer)){
+        
+    }
+    else if(isUIPicture (layer)){
+        
+    }
+}
+
+function isTxt( layer ){
+    if(layer.name.indexOf(layer.name)>=0){
+        return true;
+    }
+    return false;
+}
+
+function isScaleImage( layer ){
+    if(layer.name.indexOf("@")>=0){
+        return true;
+    }
+    return false;
+}
+
+function isUIPicture( layer ){
+    if(layer.name.indexOf("ui")>=0){
+        return true;
+    }
+}
+
+function isBtn( layer ){
+    if(layer.name.indexOf ("btn")>=0){
+        return true;
+    }
+    return false;
+}
+
+function isBar( layer ){
+    if(layer.name.indexOf ("bar")>=0){
+        return true;
+    }
+    return false;
+}
+
+function isPrice( layer ){
+    if(layer.name.indexOf ("price")>=0){
+        return true;
+    }
+    return false;
+}
+
+function isPower(layer){
+    if(layer.name.indexOf ("power")>=0){
+        return true;
+    }
+    return false;
+}
+
+function isItemBaseSkin(layer){
+    if(layer.name.indexOf ("ItemBaseSkin")>=0){
+        return true;
+    }
+    return false;
+}
+
+function isItemIconSkin(layer){
+    if(layer.name.indexOf ("ItemIconSkin")>=0){
+        return true;
+    }
+    return false;
+}
+
+
+/////////////////////////////////////////////////////////
+
+function isItemComponent( layername ){
+    if(layername.indexOf("item")){
+        return true;
+    }
+    return false;
 }
 
 
@@ -235,7 +423,7 @@ function isExportLayer( layername ){
     var arr = layername.split("_");
     var len = arr.length;
     for(var i=0; i<len; i++){
-        if(!!components[arr[i]]){
+        if(!!commonComponentMap[arr[i]]){
             return true
         }
     }
@@ -243,12 +431,10 @@ function isExportLayer( layername ){
     return false;
 }
 
-function isScaleImage( layername ){
-    if(layername.indexOf ("@")>=0){
-        return true;
-    }
-    return false;
-}
+
+
+
+
 
 
 function checkLayerName(names,layerName)
