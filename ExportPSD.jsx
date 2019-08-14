@@ -486,7 +486,7 @@ function isUIPicture( layer ){
 function isJPG(layer) {
     var imgName = layer.name;
     imgName = imgName.toLowerCase()
-    if(imgName.indexOf("jpg")){
+    if(imgName.indexOf("jpg")>=0){
         return true
     }
     return false
@@ -495,7 +495,7 @@ function isJPG(layer) {
 function isPNG(layer) {
     var imgName = layer.name;
     imgName = imgName.toLowerCase()
-    if(imgName.indexOf("png")){
+    if(imgName.indexOf("png")>=0){
         return true
     }
     return false
@@ -547,7 +547,7 @@ function isItemIconSkin(layer){
 /////////////////////////////////////////////////////////
 
 function isItemComponent( layername ){
-    if(layername.indexOf("item")){
+    if(layername.indexOf("item")>=0){
         return true;
     }
     return false;
@@ -555,7 +555,7 @@ function isItemComponent( layername ){
 
 
 function isListComponent( layername ){
-    if(layername.indexOf("list")){
+    if(layername.indexOf("list")>=0){
         return true;
     }
     return false;
