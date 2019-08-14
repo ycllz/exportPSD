@@ -8,7 +8,7 @@
 /***************************************** 配置 可以修改配置*******************************************************/
 /**
         
-    
+    图片默认png格式，命名的时候加上jpg就会导出jpg : ui_xxx_yyy_zzz_jpg
     */
 
 
@@ -36,23 +36,53 @@ var imagePath = rootPath + "assets/";
 */
 
 /**
- * 使用的是固定皮肤
+ * 
+ * 使用的是固定皮肤 componentListMap
  * 
  * 这些全部搞到一张图片那里给美术对照着，也搞个文本文件给美术，容易复制名称，不然美术敲错咋办
  * （后期抽出来做成配置来填）
  */
-var componentList = ["CommonBtn1_1Skin", "CommonBtn1_2Skin", "CommonBtn1_3Skin", "CommonBtn1_4Skin",
+var componentSkinList = ["CommonBtn1_1Skin", "CommonBtn1_2Skin", "CommonBtn1_3Skin", "CommonBtn1_4Skin",
 "CommonBtn2_1Skin", "CommonBtn2_2Skin", "CommonBtn2_3Skin", "CommonBtn2_4Skin",
 "bar1Skin", "bar1Skin_1", "bar21Skin", "bar20Skin", "bar19Skin", "bar18Skin", "bar17Skin", "bar16Skin", "bar15Skin",
 "CheckBox0", "CheckBox2", "CheckBox3", "CheckBox4",
  "ItemBaseSkin", "ItemIconSkin", "PriceIconSkin", "PowerLabelSkin"];
 
+ var componentListClass = ["Button", "Button", "Button", "Button",
+ "Button", "Button", "Button", "Button",
+ "ProgressBar", "ProgressBar", "ProgressBar", "ProgressBar", "ProgressBar", "ProgressBar", "ProgressBar", "ProgressBar", "ProgressBar",
+ "CheckBox", "CheckBox", "CheckBox", "CheckBox",
+ "ItemIconIR", "ItemIcon", "PriceIcon", "PowerLabel"
+]
+
+/** 
+ *  <e:ProgressBar id="bar0" x="120" y="181" anchorOffsetX="0" width="485" skinName="bar21Skin"/>
+    <ns1:PowerLabel id="totalPower" text="战 123456789" y="109" anchorOffsetX="0" horizontalCenter="0"/>
+ *  Button :e
+ *  ItemIconIR :ns1
+ * 
+*/
+var defTypeMap = {}
+defTypeMap["Button"] = "e";
+defTypeMap["ProgressBar"] = "e";
+defTypeMap["CheckBox"] = "e";
+defTypeMap["Label"] = "e";
+defTypeMap["ItemIconIR"] = "ns1";
+defTypeMap["ItemIcon"] = "ns1";
+defTypeMap["PriceIcon"] = "ns1";
+defTypeMap["PowerLabel"] = "ns1";
+
 /**
- * @list list_v_x：x列纵向滚动，行是无限的  ；list_h_y：y行横向滚动，列是无限的
+ * egretComponentsMap
+ * 
+ * @list list_v_x：x列纵向滚动，行是无限的  ；list_h_y：y行横向滚动，列是无限的 ； list_t_x :x列纵向滚动，行是无限的
  */
 var egretComponents = ["list", "item", "txt"];
 
-/**这个先不管，已经跟通用的自定义组件重合了 */
+/**
+ * 这个先不管，已经跟通用的自定义组件重合了
+ * 
+*/
 var commonComponents = [ "checkbox", "btn", "bar", "power", "price"];
 
 /******************************************* 程序 不能改 **********************************************************/
@@ -60,10 +90,13 @@ var commonComponents = [ "checkbox", "btn", "bar", "power", "price"];
 var image2ComponentMap;//图片对应的组件 BG 这类背景图组件
 
 /**
+ * key：组件皮肤名 value：组件皮肤名 ，为了直接判断是否存在组件，不用遍历
  * componentList
  * 如果该图层是已经制作出来的组件，直接skinname直接就是这个组件
  */
-var componentListMap;
+var componentSkinListMap;
+/** key：组件皮肤名 value：类名 */
+var componentListClassMap;
 /**
  * commonComponents
  * 默认通用的组件 btn 命名的psd图层使用 CommonBtn1_1Skin 等默认
@@ -78,7 +111,8 @@ var BGLen = 50;
 var scaleImage = 1;
 
 var slantingBar = "/";
-var lineBreaks = "\n"
+//linebreaks
+var LB = "\n"
 var tabsDeep = ["","\t", "\t\t", "\t\t\t", "\t\t\t\t", "\t\t\t\t\t", "\t\t\t\t\t\t", "\t\t\t\t\t\t\t", "\t\t\t\t\t\t\t\t"]
 var deepIndex = 1;
 
@@ -104,14 +138,17 @@ function initData(){
     commonComponentMap["price"] = "PriceIconSkin";
 
     //如果该图层是已经制作出来的组件，直接skinname直接就是这个组件
-    componentListMap = {}
-    componentListMap["BG"] = "BG";
+    componentSkinListMap = {}
+    componentSkinListMap["BG"] = "BG";
     for(var i=2; i<=BGLen; i++){
-        componentListMap["BG"+i] = "BG"+i;
+        componentSkinListMap["BG"+i] = "BG"+i;
+        componentListClassMap["BG"+i] = "Component"
     }
-    for(var i=0; i<componentList.length; i++){
-        componentListMap[componentList[i]] = componentList[i];
+    for(var i=0; i<componentSkinList.length; i++){
+        componentSkinListMap[componentSkinList[i]] = componentSkinList[i];
+        componentListClassMap[componentSkinList[i]] = componentListClass[i]
     }
+
 
     egretComponentsMap = {};
     var comLen = egretComponents.length;
@@ -164,7 +201,8 @@ function init(){
         <?xml version="1.0" encoding="utf-8"?>
         <e:Skin class="CommonDialog7Skin" width="720" height="1280" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" >
     
-    
+        <e:Component skinName="BG13" y="214" anchorOffsetX="0" width="552" anchorOffsetY="0" height="658"   x="84"/>
+
         <e:Component anchorOffsetX="0" anchorOffsetY="0" touchEnabled="false" horizontalCenter="0" width="552" height="241" y="372" skinName="BG13"/>
         <e:Button id="dialogCloseBtn" icon="ui_common_gb02_btn_n" x="609" y="305" skinName="CloseBtn">
         </e:Button>
@@ -195,6 +233,8 @@ function init(){
         <e:ProgressBar id="bar0" x="120" y="181" anchorOffsetX="0" width="485" skinName="bar21Skin"/>
         
         <ns1:PowerLabel id="totalPower" text="战 123456789" y="109" anchorOffsetX="0" horizontalCenter="0"/>
+
+        <e:Label id="nameLab" text="[1234]玩家昵称" x="163" y="29" size="25" anchorOffsetX="0" width="261" anchorOffsetY="0" height="29" multiline="true" wordWrap="true" lineSpacing="7" verticalAlign="top" textColor="0xda6d02" fontFamily="SimHei"/>
         
         </e:Skin>
         
@@ -209,41 +249,64 @@ function init(){
     var exLen = exportLayers.length;
     for(var i=0; i<exLen; i++){
         var layer = exportLayers[i]
-        var xcoord = layer.bounds[0].as("px")
-        var ycoord = layer.bounds[1].as("px")
         
-        var layerRealWidth = layer.bounds[2].as("px") - layer.bounds[0].as("px");
-        var layerRealHeight = layer.bounds[3].as("px") - layer.bounds[1].as("px");
-        
-            
-        if(isListComponent (layer.name)){//列表，特殊的图层组
-            exportList(layer, 1);
+        if(layer && isImageComponent(layer)){//一般是通用底图
+            exportString = exportString + getImageComponentString(layer, 1)
+        }
+        if(layer && isCustomComponent(layer)){
+            exportString = exportString + getCustomComponentString(layer, 1)
+        }
+        else if(layer && isListComponent (layer.name)){//列表，特殊的图层组
+            exportString = exportString + exportList(layer, 1);
         }
         else if(layer && layer.typename == "LayerSet"){//判断是否是图层组
             exportLayerSet( layer, 1 );
         }
-        else{//图层
+        else if(layer){//图层，每个模块自己的图片 文本
             exportArtlayer( layer, 1 );
         }
     }
     
 }
+/** return [x, y, width, height] */
+function getXYWH(layer) {
+    var bounds = layer.bounds;
+    // if(layer.bounds){
+    //     bounds = layer.bounds;
+    // }
+    // else if(layer.position){
+    //     bounds = layer.position;
+    // }
+    var xcoord = bounds[0].as("px");
+    var ycoord = bounds[1].as("px");
+    var layerRealWidth = bounds[2].as("px") - bounds[0].as("px");
+    var layerRealHeight = bounds[3].as("px") - bounds[1].as("px");
+    return [xcoord, ycoord, layerRealWidth, layerRealHeight];
+}
 
 /** 列表*/
 function exportList( layer, deepIndex ){
-    var xcoord = layer.bounds[0].as("px")
-    var ycoord = layer.bounds[1].as("px")
-    var layerRealWidth = layer.bounds[2].as("px") - layer.bounds[0].as("px");
-    var layerRealHeight = layer.bounds[3].as("px") - layer.bounds[1].as("px");
+    var coords = getXYWH(layer);
+
+    var layout = ""
+    if(layer.name.indexOf("h")>=0 || layer.name.indexOf("H")>=0){
+        layout = '<e:HorizontalLayout gap="5"/>'
+    }else if(layer.name.indexOf("v")>=0 || layer.name.indexOf("V")>=0){
+        layout = '<e:VerticalLayout gap="5"/>'
+    }else{
+        // list_t_x :x列纵向滚动，行是无限的
+        var arr = layer.name.split("_")
+        layout = '<e:TileLayout horizontalGap="5" verticalGap="5" requestedColumnCount="'+ arr[2] +'"/>'
+    }
     
     var str = ""
-    str = str + tabsDeep[deepIndex] + '<e:Scroller id="sl_scroller" x="'+ xcoord +'" y="'+ ycoord +'" width="' + layerRealWidth + '" height="' + layerRealHeight + '" >'
-    str = str + lineBreaks + tabsDeep[deepIndex+1] + '<e:List id="' + layer.name + layer.itemIndex  + '" >'
-    str = str + lineBreaks + tabsDeep[deepIndex+1] + '<e:layout>'
-    str = str + lineBreaks + tabsDeep[deepIndex+1] + '<e:VerticalLayout gap="5"/>'
-    str = str + lineBreaks + tabsDeep[deepIndex+1] + '</e:layout>'
-    str = str + lineBreaks + tabsDeep[deepIndex+1] + '</e:List>'
-    str = str + lineBreaks + tabsDeep[deepIndex] + '</e:Scroller>'
+    str = str + tabsDeep[deepIndex] + '<e:Scroller id="sl_scroller" x="'+ coords[0] +'" y="'+ coords[1] +'" width="' + coords[2] + '" height="' + coords[3] + '" >'
+    str = str + LB + tabsDeep[deepIndex+1] + '<e:List id="' + layer.name + layer.itemIndex  + '" >'
+    str = str + LB + tabsDeep[deepIndex+1] + '<e:layout>'
+    str = str + LB + tabsDeep[deepIndex+1] + layout
+    str = str + LB + tabsDeep[deepIndex+1] + '</e:layout>'
+    str = str + LB + tabsDeep[deepIndex+1] + '</e:List>'
+    str = str + LB + tabsDeep[deepIndex] + '</e:Scroller>'
     
     exportListItem(layer);
     
@@ -304,20 +367,49 @@ function getLayerSetString( layerSet, deepIndex ){
 function exportArtlayer( layer, deepIndex ){
     //9宫的才需要在程序中设定宽高，其他的不用
     if( isScaleImage (layer) ){
-        
+        return getScaleImageString(layer, deepIndex)
     }
     else if( isUIPicture(layer) ){
-        
+        return getImageString(layer, deepIndex)
     }
     else if( isTxt(layer) ){
-        
+        return getTxtString(layer, deepIndex)
     }
 }
 
+function getTxtString(layer, deepIndex) {
+    if(layer.kind == LayerKind.TEXT){
+        var coords = getXYWH(layer)
+        return '<e:Label id="'+layer.name+'" text="'+layer.contents+'" '+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]
+        +' multiline="true" wordWrap="true" textColor="'+layer.color+'" fontFamily="SimHei"/>';
+    }
+}
 
+function getScaleImageString(layer, deepIndex) {
+    var coords = getXYWH(layer)
+    var arr = layer.name.split("@")
+    var grids = arr[1].split("_")
+    var gridStr = grids[0] + "," + grids[1] + "," + grids[2] + "," + grids[3]
+    return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+' source="'+getImageName(layer)+'" scale9Grid="'+gridStr+'"/>'
+}
 
-function exportFile(){
+function getImageString(layer, deepIndex) {
+    var coords = getXYWH(layer)
+    return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+' source="'+getImageName(layer)+'" />'
+}
 
+function getImageName(layer) {
+    var sourceName = ""
+    if(isJPG(layer)){
+        sourceName = layer.name
+    }
+    else if(isPNG(layer)){
+        sourceName = layer.name
+    }
+    else{
+        sourceName = layer.name + "_png"
+    }
+    return sourceName
 }
 
 /** "txt", "checkbox", "btn", "bar", "price"
@@ -326,15 +418,44 @@ function exportFile(){
 ***/
 function getExportLayerString( layer, deepIndex ){
     if(isTxt (layer)){
-        
+        return getTxtString(layer, deepIndex)
     }
     else if(isScaleImage (layer)){
-        
+        return getScaleImageString(layer, deepIndex)
     }
     else if(isUIPicture (layer)){
-        
+        return getImageComponentString(layer, deepIndex)
     }
 }
+
+function getImageComponentString(layer, deepIndex) {
+    var skinName = image2ComponentMap[layer.name]
+    var coords = getXYWH[layer];
+    return '<e:Component skinName="'+skinName+'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" />'
+}
+
+function getCustomComponentString(layer, deepIndex){
+    var skinName = layer.name;
+    var className = componentListClassMap[skinName]
+    var coords = getXYWH[layer];
+    var defString = LB + tabsDeep[deepIndex] + '<'+defTypeMap[className]+':'+className+' skinName="'+skinName+'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" />'
+    return defString;
+}
+
+function isImageComponent(layer) {
+    if(image2ComponentMap[layer.name]){
+        return true;
+    }
+    return false;
+}
+
+function isCustomComponent(layer) {
+    if(componentSkinListMap[layer.name]){
+        return true;
+    }
+    return false;
+}
+
 
 function isTxt( layer ){
     if(layer.name.indexOf(layer.name)>=0){
@@ -354,6 +475,24 @@ function isUIPicture( layer ){
     if(layer.name.indexOf("ui")>=0){
         return true;
     }
+}
+
+function isJPG(layer) {
+    var imgName = layer.name;
+    imgName = imgName.toLowerCase()
+    if(imgName.indexOf("jpg")){
+        return true
+    }
+    return false
+}
+
+function isPNG(layer) {
+    var imgName = layer.name;
+    imgName = imgName.toLowerCase()
+    if(imgName.indexOf("png")){
+        return true
+    }
+    return false
 }
 
 function isBtn( layer ){
@@ -435,7 +574,7 @@ function isExportLayer( layername ){
 
 
 
-
+///////////////////////////////////////////////////////////////////////////////
 
 function checkLayerName(names,layerName)
 {
