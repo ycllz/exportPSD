@@ -139,6 +139,8 @@ function initData(){
 
     //如果该图层是已经制作出来的组件，直接skinname直接就是这个组件
     componentSkinListMap = {}
+    componentListClassMap = {}
+    
     componentSkinListMap["BG"] = "BG";
     for(var i=2; i<=BGLen; i++){
         componentSkinListMap["BG"+i] = "BG"+i;
@@ -260,12 +262,14 @@ function init(){
             exportString = exportString + exportList(layer, 1);
         }
         else if(layer && layer.typename == "LayerSet"){//判断是否是图层组
-            exportLayerSet( layer, 1 );
+            exportString = exportString + exportLayerSet( layer, 1 );
         }
         else if(layer){//图层，每个模块自己的图片 文本
-            exportArtlayer( layer, 1 );
+            exportString = exportString + exportArtlayer( layer, 1 );
         }
     }
+
+    exportString
     
 }
 /** return [x, y, width, height] */
@@ -308,7 +312,7 @@ function exportList( layer, deepIndex ){
     str = str + LB + tabsDeep[deepIndex+1] + '</e:List>'
     str = str + LB + tabsDeep[deepIndex] + '</e:Scroller>'
     
-    exportListItem(layer);
+    var itemstring = exportListItem(layer);
     
     return str;
 }
@@ -331,13 +335,14 @@ function exportListItem( layerSet ){
     var componentString = "";
     if(itemLayer){
         if(itemLayer.typename == "LayerSet"){//是否是图层组
-            
+            componentString= componentString + exportLayerSet(itemLayer, 1)
         }
         else{
             //一般图层
-            exportArtlayer( layerSet[i])
+            componentString = componentString + exportArtlayer( layerSet[i])
         }
     }
+    return componentString;
 }
 
 /** 图层组*/
@@ -348,15 +353,16 @@ function exportLayerSet( layerSet, deepIndex ){
     for (var i =0; i<layerSet.length; i++){
         if(layerSet[i].typename == "LayerSet"){//是否是图层组
             
-            layerSetString = getLayerSetString( layerSet[i], deepIndex );
+            //layerSetString = layerSetString + getLayerSetString( layerSet[i], deepIndex );
             
             exportLayerSet( layerSet[i].layers, deepIndex+1 );//递归
         }
         else{
             //一般图层
-            exportArtlayer( layerSet[i], deepIndex )
+            layerSetString = layerSetString + exportArtlayer( layerSet[i], deepIndex )
         }
     }
+    return layerSetString;
 }
 
 function getLayerSetString( layerSet, deepIndex ){
