@@ -8,7 +8,7 @@
 /***************************************** 配置 可以修改配置*******************************************************/
 /**
         
-    图片默认png格式，命名的时候加上jpg就会导出jpg : ui_xxx_yyy_zzz_jpg
+    图片默认png格式，命名的时候加上jpg就会导出jpg : ui_xxx_yyy_zzz_jpg   ;要导出的文本命名需要加 txt，特定组件的用特定组件名称
     */
 
 
@@ -20,7 +20,7 @@ var saveImages = true;
 /** 是否导出exml 配置文件，这个文件给前端用的 **/
 var saveExmlFiles = true;
 /** 工作的根目录，不填的话，默认是 psd 文件的目录，导出的 图片 exml 文件都在 psd 文件目录下 */
-var rootPath = ""//"E:/microtrunk/resource/总美术上传文件/ui/";
+var rootPath = "E:/microtrunk/resource/总美术上传文件/ui/";//""//
 
 var imagePath = rootPath + "assets/";
 
@@ -71,6 +71,8 @@ defTypeMap["ItemIconIR"] = "ns1";
 defTypeMap["ItemIcon"] = "ns1";
 defTypeMap["PriceIcon"] = "ns1";
 defTypeMap["PowerLabel"] = "ns1";
+defTypeMap["list"] = "e";
+defTypeMap["btn"] = "e";
 
 /**
  * egretComponentsMap
@@ -84,6 +86,10 @@ var egretComponents = ["list", "item", "txt"];
  * 
 */
 var commonComponents = [ "checkbox", "btn", "bar", "power", "price"];
+
+var exportTypes = ["btn", "txt", "list", "item", "checkbox", "bar", "power", "price"]
+var exportTypeMap = {}
+
 
 /******************************************* 程序 不能改 **********************************************************/
 
@@ -117,11 +123,10 @@ var tabsDeep = ["","\t", "\t\t", "\t\t\t", "\t\t\t\t", "\t\t\t\t\t", "\t\t\t\t\t
 var deepIndex = 1;
 
 var fileBaseName = "";
-var exportString = "";
+var exmlContents = "";
 
 initData();
-
-init();
+parsePSDFile();
 
 function initData(){
     image2ComponentMap = {}//如果图片名称是这些的，就用这些组件
@@ -136,7 +141,7 @@ function initData(){
     commonComponentMap["bar"] = "bar21Skin";
     commonComponentMap["power"] = "PowerLabelSkin";
     commonComponentMap["price"] = "PriceIconSkin";
-
+    
     //如果该图层是已经制作出来的组件，直接skinname直接就是这个组件
     componentSkinListMap = {}
     componentListClassMap = {}
@@ -158,10 +163,14 @@ function initData(){
         egretComponentsMap[egretComponents[i]] = egretComponents[i];
     }
 
+    for(var i=0; i<exportTypes.length; i++){
+        exportTypeMap[exportTypes[i]] = exportTypes[i];
+    }
+
 }
 
 
-function init(){
+function parsePSDFile(){
     var stageWidth = app.activeDocument.width.as("px") * scaleImage;
     var stageHeight = app.activeDocument.height.as("px") * scaleImage;
     
@@ -169,7 +178,9 @@ function init(){
     var exportLayers = []
     
     if(rootPath==""){
-        rootPath = app.activeDocument.path
+        rootPath = app.activeDocument.path + "/export/"
+    }else{
+        rootPath = rootPath + "export/"
     }
     //保存exml文件的文件名
     var name = decodeURI(app.activeDocument.name);
@@ -187,7 +198,7 @@ function init(){
         //bounds UnitValue 数组
         //图层区域。只读。[0,1,2,3] 分别是 0:左侧左边距 ，1:顶侧顶边距 ，2:右侧左边距 ，3:底侧顶边距。
         
-        $.writeln( layer.name +" , " + layer.typename + " , " + layer.kind + " , " + ( layer.bounds[1].as("px") ) )//LayerKind
+        //$.writeln( layer.name +" , " + layer.typename + " , " + layer.kind + " , " + ( layer.bounds[1].as("px") ) )//LayerKind
         //if(layers[i].typename == "LayerSet")//判断是否是图层组
         //LayerKind.NORMAL
         if(layer.visible){
@@ -246,32 +257,60 @@ function init(){
         //图层区域。只读。[0,1,2,3] 分别是 0:左侧左边距 ，1:顶侧顶边距 ，2:右侧左边距 ，3:底侧顶边距。
      **/
         
-    exportString = ""
+    exmlContents = ""
     deepIndex = 1;
     var exLen = exportLayers.length;
     for(var i=0; i<exLen; i++){
         var layer = exportLayers[i]
         
         if(layer && isImageComponent(layer)){//一般是通用底图
-            exportString = exportString + getImageComponentString(layer, 1)
+            exmlContents = addStr(exmlContents, getImageComponentString(layer, 1))
         }
         if(layer && isCustomComponent(layer)){
-            exportString = exportString + getCustomComponentString(layer, 1)
+            exmlContents = addStr(exmlContents, getCustomComponentString(layer, 1))
         }
         else if(layer && isListComponent (layer.name)){//列表，特殊的图层组
-            exportString = exportString + exportList(layer, 1);
+            exmlContents = addStr(exmlContents, exportList(layer, 1))
         }
         else if(layer && layer.typename == "LayerSet"){//判断是否是图层组
-            exportString = exportString + exportLayerSet( layer, 1 );
+            exmlContents = addStr(exmlContents, exportLayerSet( layer, 1 ))
         }
         else if(layer){//图层，每个模块自己的图片 文本
-            exportString = exportString + exportArtlayer( layer, 1 );
+            exmlContents = addStr(exmlContents, exportArtlayer( layer, 1 ))
         }
     }
 
-    exportString
+    exmlContents
+
+    dir
     
+    $.writeln ("本次导出的文件都在目录：" + dir)
+    alert("本次导出的文件都在目录：" + dir)
+    
+    saveEXML(dir, exmlFileName, exmlContents)
 }
+
+function saveEXML(path, fileName, contents) {
+    var file = new File(path + fileName + ".exml");
+    file.remove();
+    file.open("a");
+    file.lineFeed = "\n";
+    file.encoding="utf-8";
+    file.write(contents);
+    file.close();
+}
+
+function addStr(str1, str2) {
+    return getStr(str1) + getStr(str2)
+}
+
+function getStr(str) {
+    if(str==undefined || str=="undefined"){
+        return ""
+    }
+    return str;
+}
+
 /** return [x, y, width, height] */
 function getXYWH(layer) {
     var bounds = layer.bounds;
@@ -281,10 +320,10 @@ function getXYWH(layer) {
     // else if(layer.position){
     //     bounds = layer.position;
     // }
-    var xcoord = bounds[0].as("px");
-    var ycoord = bounds[1].as("px");
-    var layerRealWidth = bounds[2].as("px") - bounds[0].as("px");
-    var layerRealHeight = bounds[3].as("px") - bounds[1].as("px");
+    var xcoord = Math.floor(bounds[0].as("px"));
+    var ycoord = Math.floor(bounds[1].as("px"));
+    var layerRealWidth = Math.floor(bounds[2].as("px") - bounds[0].as("px"));
+    var layerRealHeight = Math.floor(bounds[3].as("px") - bounds[1].as("px"));
     return [xcoord, ycoord, layerRealWidth, layerRealHeight];
 }
 
@@ -335,11 +374,11 @@ function exportListItem( layerSet ){
     var componentString = "";
     if(itemLayer){
         if(itemLayer.typename == "LayerSet"){//是否是图层组
-            componentString= componentString + exportLayerSet(itemLayer, 1)
+            componentString= addStr(componentString, exportLayerSet(itemLayer, 1))
         }
         else{
             //一般图层
-            componentString = componentString + exportArtlayer( layerSet[i])
+            componentString = addStr(componentString, exportArtlayer( layerSet[i]))
         }
     }
     return componentString;
@@ -359,7 +398,7 @@ function exportLayerSet( layerSet, deepIndex ){
         }
         else{
             //一般图层
-            layerSetString = layerSetString + exportArtlayer( layerSet[i], deepIndex )
+            layerSetString = addStr(layerSetString, exportArtlayer( layerSet[i], deepIndex ))
         }
     }
     return layerSetString;
@@ -565,10 +604,9 @@ function isExportLayer( layername ){
     if(layername.indexOf("_")>=0){
         return true;
     }
-    var arr = layername.split("_");
-    var len = arr.length;
-    for(var i=0; i<len; i++){
-        if(!!commonComponentMap[arr[i]]){
+    for(var i=0; i<exportTypes.length; i++){
+        var typeStr = exportTypes[i]
+        if(layername.indexOf(typeStr)>=0){
             return true
         }
     }
