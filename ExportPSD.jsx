@@ -286,6 +286,14 @@ function parsePSDFile(){
     
     $.writeln ("本次导出的文件都在目录：" + dir)
     alert("本次导出的文件都在目录：" + dir)
+
+    var className = exmlFileName
+
+    exmlContents =
+    '<?xml version="1.0" encoding="utf-8"?>'+LB
+    +'<e:Skin class="' + className + 'Skin" width="720" height="1280" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" >'+LB
+    +exmlContents+LB
+    +'</e:Skin>'
     
     saveEXML(dir, exmlFileName, exmlContents)
 }
@@ -301,7 +309,7 @@ function saveEXML(path, fileName, contents) {
 }
 
 function addStr(str1, str2) {
-    return getStr(str1) + getStr(str2)
+    return getStr(str1) + LB + getStr(str2)
 }
 
 function getStr(str) {
