@@ -126,8 +126,16 @@ var deepIndex = 1;
 var exmlContents = "";
 var psdFileName = ""
 
+//定义一个变量[doc]，表示当前文档。
+var doc = app.activeDocument;
+
 initData();
 parsePSDFile();
+
+//将Photoshop的当前文档，重置为网页设计稿文档。
+app.activeDocument = doc;
+
+/******************************************* run ************************************************/
 
 function initData(){
     image2ComponentMap = {}//如果图片名称是这些的，就用这些组件
@@ -173,8 +181,6 @@ function initData(){
 
 function parsePSDFile(){
     
-    var curDoc = app.activeDocument.duplicate ()
-    
     var stageWidth = app.activeDocument.width.as("px") * scaleImage;
     var stageHeight = app.activeDocument.height.as("px") * scaleImage;
     
@@ -189,9 +195,14 @@ function parsePSDFile(){
     //保存exml文件的文件名
     var name = decodeURI(app.activeDocument.name);
 	psdFileName = name.substring(0, name.indexOf("."));
+    if(psdFileName==""){
+        psdFileName = name;
+    }
 	var dir = rootPath + psdFileName + slantingBar;//app.activeDocument.path + 
 
     new Folder( dir ).create();
+    
+    var curDoc = app.activeDocument.duplicate ()
     
     //new Folder( imagePath ).create();
     var layers = app.activeDocument.layers
@@ -264,6 +275,7 @@ function parsePSDFile(){
     deepIndex = 1;
     var exLen = exportLayers.length;
     for(var i=0; i<exLen; i++){
+        app.activeDocument = curDoc;
         var layer = exportLayers[i]
         
         exmlContents = concatString(exmlContents, parseLayer(layer, deepIndex))
@@ -322,16 +334,20 @@ function exchangeString(str) {
 
 /** return [x, y, width, height] */
 function getXYWH(layer) {
-    var bounds = layer.bounds;
+    // var bounds = layer.bounds;
     // if(layer.bounds){
     //     bounds = layer.bounds;
     // }
     // else if(layer.position){
     //     bounds = layer.position;
     // }
+    //获得当前图层的尺寸大小。这个尺寸排除了图层特效如阴影、外发光等产生的范围。
+    var bounds = layer.boundsNoEffects;
     var xcoord = Math.floor(bounds[0].as("px"));
     var ycoord = Math.floor(bounds[1].as("px"));
+    //计算当前图层的宽度，为范围数组变量的第三个值与第一个值的差。
     var layerRealWidth = Math.floor(bounds[2].as("px") - bounds[0].as("px"));
+    //计算当前图层的高度，为范围数组变量的第四个值与第二个值的差。
     var layerRealHeight = Math.floor(bounds[3].as("px") - bounds[1].as("px"));
     return [xcoord, ycoord, layerRealWidth, layerRealHeight];
 }
@@ -483,15 +499,147 @@ function getTxtString(layer, deepIndex) {
 
 function getScaleImageString(layer, deepIndex) {
     var coords = getXYWH(layer)
+    
     var arr = layer.name.split("@")
     var grids = arr[1].split("_")
     var gridStr = grids[0] + "," + grids[1] + "," + grids[2] + "," + grids[3]
+    
+    //导出图片
+    savePicture(layer)
+    
     return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+' source="'+getImageName(layer)+'" scale9Grid="'+gridStr+'"/>'
 }
 
+
 function getImageString(layer, deepIndex) {
     var coords = getXYWH(layer)
+    
+    //导出图片
+    savePicture(layer);
+    
     return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+' source="'+getImageName(layer)+'" />'
+}
+
+function savePicture(layer){
+    // var bounds = layer.boundsNoEffects;
+	//  //计算当前图层的宽度，为范围数组变量的第三个值与第一个值的差。
+	// var width = bounds[2] - bounds[0];
+	//  //计算当前图层的高度，为范围数组变量的第四个值与第二个值的差。
+	// var height = bounds[3] - bounds[1];
+    
+    var coords = getXYWH (layer)
+    
+    //var arr = layer.name.split("@")
+    //var grids = arr[1].split("_")
+    //var nameStr = arr[0].split("_")
+    
+    var nameStr = layer.name.split("_");
+    var picName = "";
+    var len = nameStr.length;
+    if(isJPG(layer)){
+        len = nameStr.length - 1;
+    }
+    for(var i=0; i<len; i++){
+        picName = picName + "_" + nameStr[i]
+    }
+    
+    layer.copy();
+    //创建一个新文档，新文档的尺寸为拷贝到内存中图层的尺寸一致。
+    //宽带, 高度, 分辨率resolution, 名称, 文档颜色模式, 背景内容, 像素长宽比, 颜色位数, 色彩管理 
+    var pxWidth = new UnitValue( coords[2] + " px");
+    var pxHeight = new UnitValue( coords[3] + " px");
+	app.documents.add(pxWidth, pxHeight, doc.resolution, "myDocument", NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
+    var curdoc = app.documents.getByName ("myDocument")
+    //将内存中的图层，复制到新文档。
+    app.activeDocument.paste();
+    //blur number 模糊图像，默认 0.0 不模糊
+    //定义一个变量[option]，表示图片的输出格式。
+    var option = new ExportOptionsSaveForWeb();
+    //设置图片输出时支持透明度。
+    option.transparency = true;
+    //设置图片输出的色彩范围为256色。
+    option.colors = 256;
+    option.format = SaveDocumentType.PNG;
+    option.PNG8 = false;
+    option.quality = imageQuality;//品质 。（0~100）。
+    
+    var pictureType = "png"
+    if(isJPG(layer)){
+        pictureType = "jpg"
+        //设置图片输出的格式为GIF格式。
+        option.format = SaveDocumentType.JPEG;
+        option.optimized = true;
+    }
+    var path = rootPath + psdFileName + slantingBar + nameStr[1] + slantingBar
+    new Folder(path).create();
+    var fileName = path + picName + "."+pictureType
+    //定义一个变量[file]，作为图层输出的路径。
+    var file = new File(fileName);
+    //调用[activeDocument]对象的[exportDocument]方法，将新文档导出为SaveDocumentType图片。
+    curdoc.exportDocument(file, ExportType.SAVEFORWEB, option);
+    
+    //调用[activeDocument]对象的[close]方法，关闭新文档。[close]方法内的参数，表示关闭新文档时，不再存储新文档。
+    curdoc.close(SaveOptions.DONOTSAVECHANGES);
+    //将Photoshop的当前文档，重置为网页设计稿文档。
+    //app.activeDocument = doc;
+}
+
+function saveScalePiture(layer){
+    // var bounds = layer.boundsNoEffects;
+	//  //计算当前图层的宽度，为范围数组变量的第三个值与第一个值的差。
+	// var width = bounds[2] - bounds[0];//厘米
+	//  //计算当前图层的高度，为范围数组变量的第四个值与第二个值的差。
+	// var height = bounds[3] - bounds[1];
+    
+    var coords = getXYWH (layer)
+    
+    var arr = layer.name.split("@")
+    var grids = arr[1].split("_")
+    var nameStr = arr[0].split("_")
+    
+    // var nameStr = layer.name.split("_")
+    
+    layer.copy();
+    //创建一个新文档，新文档的尺寸为拷贝到内存中图层的尺寸一致。
+    //宽带, 高度, 分辨率resolution, 名称, 文档颜色模式, 背景内容, 像素长宽比, 颜色位数, 色彩管理 
+    var pxWidth = new UnitValue( coords[2] + " px");
+    var pxHeight = new UnitValue( coords[3] + " px");
+	app.documents.add(pxWidth, pxHeight, doc.resolution, "myDocument", NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
+    var curdoc = app.documents.getByName ("myDocument")
+    //将内存中的图层，复制到新文档。
+    app.activeDocument.paste();
+
+    //blur number 模糊图像，默认 0.0 不模糊
+    //定义一个变量[option]，表示图片的输出格式。
+    var option = new ExportOptionsSaveForWeb();
+    //设置图片输出时支持透明度。
+    option.transparency = true;
+    //设置图片输出的色彩范围为256色。
+    option.colors = 256;
+    option.format = SaveDocumentType.PNG;
+    option.PNG8 = false;
+    option.quality = imageQuality;//品质 。（0~100）。
+    
+    var pictureType = "png"
+    if(isJPG(layer)){
+        pictureType = "jpg"
+        //设置图片输出的格式为GIF格式。
+        option.format = SaveDocumentType.JPEG;
+        option.optimized = true;
+    }
+
+    var path = rootPath + psdFileName + slantingBar + nameStr[1] + slantingBar
+    new Folder(path).create();
+    var fileName = path + layer.name + "."+pictureType
+    //定义一个变量[file]，作为图层输出的路径。
+    var file = new File(fileName);
+    //调用[activeDocument]对象的[exportDocument]方法，将新文档导出为SaveDocumentType图片。
+    curdoc.exportDocument(file, ExportType.SAVEFORWEB, option);
+    
+    //调用[activeDocument]对象的[close]方法，关闭新文档。[close]方法内的参数，表示关闭新文档时，不再存储新文档。
+    curdoc.close(SaveOptions.DONOTSAVECHANGES);
+    //将Photoshop的当前文档，重置为网页设计稿文档。
+    //app.activeDocument = doc;
 }
 
 function getImageName(layer) {
@@ -670,6 +818,183 @@ function isExportLayer( layer ){
     return false;
 }
 
+
+/***********************************************************************/
+/***压缩 （0-9）。
+ * 
+ * activeDocument.saveAs(file, new PNGSaveOptions(), true, Extension.LOWERCASE);
+*/
+function SavePNG(fileFullPath, compression){
+	pngSaveOptions = new PNGSaveOptions();
+
+	// compression (The compression value)
+	// Default: 0
+	// Range: [0,9]
+	pngSaveOptions.compression = compression
+	
+	// interlaced (True to interlace rows)
+	// Default: false
+	pngSaveOptions.interlaced = false
+	
+	// typename (The class name of the referenced PNGSaveOptions object.)
+	// Read only
+	//pngSaveOptions.typename
+	
+	activeDocument.saveAs(new File(fileFullPath), pngSaveOptions, true, Extension.LOWERCASE);
+}
+/**品质（0~12）。*/
+function SaveJPEG(fileFullPath, quality){
+	jpgSaveOptions = new JPEGSaveOptions();
+	
+	// embedColorProfile (True to embed the color profile in the document.)
+	jpgSaveOptions.embedColorProfile = true;
+	
+	// formatOptions (The download format to use.)
+	// Default: FormatOptions.STANDARDBASELINE 
+	// Range: FormatOptions.STANDARDBASELINE, 
+	//			FormatOptions.OPTIMIZEDBASELINE, 
+	//			FormatOptions.PROGRESSIVE
+	jpgSaveOptions.formatOptions = FormatOptions.STANDARDBASELINE;
+	
+	// matte (The color to use to fill anti-aliased edges adjacent to transparent areas of the image. 
+	//			When transparency is turned off for an image, the matte color is applied to transparent areas.)
+	// Default: MatteType.WHITE
+	// Range: MatteType.BACKGROUND
+	//			MatteType.BLACK
+	//			MatteType.FOREGROUND
+	//			MatteType.NETSCAPE
+	//			MatteType.NONE
+	//			MatteType.SEMIGRAY
+	//			MatteType.WHITE
+	jpgSaveOptions.matte = MatteType.NONE;
+	
+	// quality (The image quality setting to use; affects file size and compression)
+	// Default: 3 
+	// Range: [0,12]
+	jpgSaveOptions.quality = quality;
+	
+	// scans (The number of scans to make to incrementally display the image on the page. 
+	//			Valid only for when formatOptions = FormatOptions.PROGRESSIVE.)
+	// Default: 3
+	// Range: [3,5]
+	//jpgSaveOptions.scans = 3
+	
+	// typename (The class name of the referenced JPEGSaveOptions object.)
+	// Read only
+	//jpgSaveOptions.typename
+	
+	activeDocument.saveAs(new File(fileFullPath), jpgSaveOptions, true,Extension.LOWERCASE);
+}
+/**
+ * 
+ * @param {*} fileFullPath 
+ * @param {*} format SaveDocumentType.JPEG, 
+	//			SaveDocumentType.PNG-8, 
+	//			SaveDocumentType.PNG-24, 
+	//			SaveDocumentType.BMP
+ * @param {*} quality 
+ */
+function SaveForWeb(fileFullPath, format, quality){
+	
+	var webSaveOptions = new ExportOptionsSaveForWeb(); 
+	
+	// blur (Applies blur to the image to reduce artifacts)
+	// Default: 0.0
+	webSaveOptions.blur = 0.0; 
+	
+	// colorReduction (The color reduction algorithm.)
+	// Default: ColorReductionType.SELECTIVE 
+	// Range: ColorReductionType.PERCEPTUAL, 
+	//			ColorReductionType.SELECTIVE, 
+	//			ColorReductionType.ADAPTIVE, 
+	//			ColorReductionType.RESTRICTIVE, 
+	//			ColorReductionType.CUSTOM, 
+	//			ColorReductionType.BLACKWHITE
+	//			ColorReductionType.GRAYSCALE, 
+	//			ColorReductionType.MACINTOSH
+	//			ColorReductionType.WINDOWS
+	webSaveOptions.colorReduction = ColorReductionType.SELECTIVE 
+	
+	// colors (The number of colors in the palette.)
+	// Default: 256 
+	webSaveOptions.colors = 256
+	
+	// dither (The type of dither)
+	// Default: Dither.DIFFUSION
+	// Range: Dither.DIFFUSION
+	//			Dither.NOISE
+	//			Dither.NONE
+	//			Dither.PATTERN
+	webSaveOptions.dither = Dither.DIFFUSION
+	
+	// ditherAmount (The amount of dither.Valid only when dither = Dither.DIFFUSION)
+	// Default: 100
+	webSaveOptions.ditherAmount = 100;
+	
+	// format (The file format to use)
+	// Ddefault: SaveDocumentType.COMPUSERVEGIF
+	// Range: SaveDocumentType.COMPUSERVEGIF, 
+	//			SaveDocumentType.JPEG, 
+	//			SaveDocumentType.PNG-8, 
+	//			SaveDocumentType.PNG-24, 
+	//			SaveDocumentType.BMP
+	webSaveOptions.format = format//SaveDocumentType.JPEG; 
+	
+	// includeProfile (True to include the document’s embedded color profile)
+	// Default: false
+	webSaveOptions.includeProfile = false; 
+	
+	// interlaced (True to download in multiple passes progressive)
+	// Default: false
+	webSaveOptions.interlaced = false; 
+	
+	// lossy (The amount of lossiness allowed)
+	// Default: 0
+	webSaveOptions.lossy = 0;
+	
+	// matteColor (The colors to blend transparent pixels against.)
+	// Type: RGBColor
+	//webSaveOptions.matteColor ;
+	
+	// optimized (True to create smaller but less compatible files. Valid only when format = SaveDocumentType.JPEG.)
+	// Default: true
+	webSaveOptions.optimized = true; 
+
+	// PNG8 (Indicates the number of bits; true = 8, false = 24. Valid only when format = SaveDocumentType.PNG.)
+	// Default: true
+	webSaveOptions.PNG8 = true;
+
+	// quality (The quality of the produced image as a percentage)
+	// Default: 60
+	// Range: [0, 100]
+	webSaveOptions.quality = quality;
+	
+	// transparency (Indication of transparent areas of the image should be included in the saved image)
+	// Default: true
+	webSaveOptions.transparency = true;
+	
+	// transparencyAmount (The amont of transparency dither. Valid only if transparency = true.)
+	// Default: 100
+	webSaveOptions.transparencyAmount = 100;
+	
+	// transparencyDither (The transparency dither algorithm)
+	// Default: Dither.NONE
+	// Range: Dither.DIFFUSION
+	//			Dither.NOISE
+	//			Dither.NONE
+	//			Dither.PATTERN
+	webSaveOptions.transparencyDither = Dither.NONE
+	
+	// typename (The class name of the referenced ExportOptionsSaveForWeb object.)
+	// Read only
+	//webSaveOptions.typename
+	
+	// webSnap (The tolerance amount within which to snap close colors to web palette colors)
+	// Default: 0
+	webSaveOptions.webSnap = 0;
+	
+	activeDocument.exportDocument(new File(fileFullPath), ExportType.SAVEFORWEB, webSaveOptions);
+}//https://blog.csdn.net/aa13058219642/article/details/90244352
 
 
 
