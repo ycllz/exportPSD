@@ -397,7 +397,7 @@ function exportList( layer, deepIndex ){
     }
     
     var str = ""
-    str = str + tabsDeep[deepIndex] + '<e:Scroller id="sl_scroller" x="'+ coords[0] +'" y="'+ coords[1] +'" width="' + coords[2] + '" height="' + coords[3] + '" >'
+    str = str + tabsDeep[deepIndex] + '<e:Scroller id="scroller'+ layer.itemIndex +'" x="'+ coords[0] +'" y="'+ coords[1] +'" width="' + coords[2] + '" height="' + coords[3] + '" >'
     str = str + LB + tabsDeep[deepIndex+1] + '<e:List id="' + layer.name + layer.itemIndex  + '" >'
     str = str + LB + tabsDeep[deepIndex+1] + '<e:layout>'
     str = str + LB + tabsDeep[deepIndex+1] + layout
@@ -492,8 +492,19 @@ function exportArtlayer( layer, deepIndex ){
 function getTxtString(layer, deepIndex) {
     if(layer.kind == LayerKind.TEXT){
         var coords = getXYWH(layer)
-        return '<e:Label id="'+layer.name+'" text="'+layer.contents+'" '+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]
-        +' multiline="true" wordWrap="true" textColor="'+layer.color+'" fontFamily="SimHei"/>';
+        var color = layer.textItem.color.rgb.hexValue;
+        var dir = layer.textItem.direction
+        if(color == undefined){
+            color = 0x60402f
+        }else{
+            color = '0x' + color;
+        }
+        var size = layer.textItem.size
+        if(size == undefined){
+            size = 25
+        }
+        size = Math.floor (size)
+        return '<e:Label id="'+layer.name+'" text="'+layer.textItem.contents  +'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+size +'" multiline="true" wordWrap="true" textColor="'+color+'" fontFamily="SimHei"/>';
     }
 }
 
@@ -505,9 +516,9 @@ function getScaleImageString(layer, deepIndex) {
     var gridStr = grids[0] + "," + grids[1] + "," + grids[2] + "," + grids[3]
     
     //导出图片
-    savePicture(layer)
+    saveScalePiture(layer)
     
-    return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+' source="'+getImageName(layer)+'" scale9Grid="'+gridStr+'"/>'
+    return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" scale9Grid="'+gridStr+'"/>'
 }
 
 
@@ -517,7 +528,7 @@ function getImageString(layer, deepIndex) {
     //导出图片
     savePicture(layer);
     
-    return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+' source="'+getImageName(layer)+'" />'
+    return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" />'
 }
 
 function savePicture(layer){
@@ -540,7 +551,16 @@ function savePicture(layer){
         len = nameStr.length - 1;
     }
     for(var i=0; i<len; i++){
-        picName = picName + "_" + nameStr[i]
+        var tmp = nameStr[i]
+        tmp = tmp.toLowerCase()
+        if(tmp=="png" || tmp=="jpg"){
+            break
+        }
+        if(i==0){
+            picName = nameStr[i]
+        }else{
+            picName = picName + "_" + nameStr[i]
+        }
     }
     
     layer.copy();
@@ -548,8 +568,8 @@ function savePicture(layer){
     //宽带, 高度, 分辨率resolution, 名称, 文档颜色模式, 背景内容, 像素长宽比, 颜色位数, 色彩管理 
     var pxWidth = new UnitValue( coords[2] + " px");
     var pxHeight = new UnitValue( coords[3] + " px");
-	app.documents.add(pxWidth, pxHeight, doc.resolution, "myDocument", NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
-    var curdoc = app.documents.getByName ("myDocument")
+	app.documents.add(pxWidth, pxHeight, doc.resolution, picName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
+    var curdoc = app.documents.getByName (picName)
     //将内存中的图层，复制到新文档。
     app.activeDocument.paste();
     //blur number 模糊图像，默认 0.0 不模糊
@@ -578,6 +598,8 @@ function savePicture(layer){
     //调用[activeDocument]对象的[exportDocument]方法，将新文档导出为SaveDocumentType图片。
     curdoc.exportDocument(file, ExportType.SAVEFORWEB, option);
     
+    file.close();
+
     //调用[activeDocument]对象的[close]方法，关闭新文档。[close]方法内的参数，表示关闭新文档时，不再存储新文档。
     curdoc.close(SaveOptions.DONOTSAVECHANGES);
     //将Photoshop的当前文档，重置为网页设计稿文档。
@@ -594,20 +616,57 @@ function saveScalePiture(layer){
     var coords = getXYWH (layer)
     
     var arr = layer.name.split("@")
-    var grids = arr[1].split("_")
     var nameStr = arr[0].split("_")
+    var grids = arr[1].split("_")
     
     // var nameStr = layer.name.split("_")
+    var area_1_width = (Number(grids[0]) + (Number(grids[2])>>1)).toFixed(2)
+    var area_1_height = (Number(grids[1]) + (Number(grids[3])>>1))
+
+    var picName = "";
+    var nameLen = nameStr.length;
+    
+    for(var i=0; i<nameLen; i++){
+        if(picName == ""){
+            picName = nameStr[i]
+        }else{
+            picName = picName + "_" + nameStr[i]
+        }
+    }
+    var gridsLen = grids.length;
+    if(isJPG(layer)){
+        gridsLen = grids.length - 1;
+    }
+    picName = picName + "@"
+    for(var i=0; i<gridsLen; i++){
+        var tmp = grids[i]
+        tmp = tmp.toLowerCase()
+        if(tmp=="png" || tmp=="jpg"){
+            break
+        }
+        if(picName == ""){
+            picName = grids[i]
+        }else{
+            picName = picName + "_" + grids[i]
+        }
+    }
     
     layer.copy();
     //创建一个新文档，新文档的尺寸为拷贝到内存中图层的尺寸一致。
     //宽带, 高度, 分辨率resolution, 名称, 文档颜色模式, 背景内容, 像素长宽比, 颜色位数, 色彩管理 
     var pxWidth = new UnitValue( coords[2] + " px");
     var pxHeight = new UnitValue( coords[3] + " px");
-	app.documents.add(pxWidth, pxHeight, doc.resolution, "myDocument", NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
-    var curdoc = app.documents.getByName ("myDocument")
+
+	app.documents.add(pxWidth, pxHeight, doc.resolution, picName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
+    var curdoc = app.documents.getByName (picName)
     //将内存中的图层，复制到新文档。
     app.activeDocument.paste();
+    app.activeDocument.paste();
+    app.activeDocument.paste();
+    app.activeDocument.paste();
+
+    preferences.rulerUnits = Units.PIXELS;
+    activeDocument.crop([0, 0, grids[0], grids[1]], 0);
 
     //blur number 模糊图像，默认 0.0 不模糊
     //定义一个变量[option]，表示图片的输出格式。
@@ -630,11 +689,13 @@ function saveScalePiture(layer){
 
     var path = rootPath + psdFileName + slantingBar + nameStr[1] + slantingBar
     new Folder(path).create();
-    var fileName = path + layer.name + "."+pictureType
+    var fileName = path + picName + "."+pictureType
     //定义一个变量[file]，作为图层输出的路径。
     var file = new File(fileName);
     //调用[activeDocument]对象的[exportDocument]方法，将新文档导出为SaveDocumentType图片。
     curdoc.exportDocument(file, ExportType.SAVEFORWEB, option);
+    
+    file.close();
     
     //调用[activeDocument]对象的[close]方法，关闭新文档。[close]方法内的参数，表示关闭新文档时，不再存储新文档。
     curdoc.close(SaveOptions.DONOTSAVECHANGES);
@@ -672,6 +733,8 @@ function getExportLayerString( layer, deepIndex ){
     }
 }
 
+/*****************************  获取组件exml文本 ***********************************/
+
 function getImageComponentString(layer, deepIndex) {
     var skinName = image2ComponentMap[layer.name]
     var coords = getXYWH[layer];
@@ -685,6 +748,9 @@ function getCustomComponentString(layer, deepIndex){
     var defString = LB + tabsDeep[deepIndex] + '<'+defTypeMap[className]+':'+className+' skinName="'+skinName+'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" />'
     return defString;
 }
+
+
+/*****************************  组件判断 ***********************************/
 
 function isImageComponent(layer) {
     if(image2ComponentMap[layer.name]){
@@ -783,7 +849,7 @@ function isItemIconSkin(layer){
 }
 
 
-/////////////////////////////////////////////////////////
+/*****************************  组件判断 ***********************************/
 
 function isItemComponent( layername ){
     if(layername.indexOf("item")>=0){
