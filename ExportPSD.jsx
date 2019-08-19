@@ -665,15 +665,34 @@ function saveScalePiture(layer){
     // app.activeDocument.paste();
     
     /*************左边 ***********/
-    var area_1_width = (Number(grids[0]) + (Number(grids[2])>>1)).toFixed(2)
-    var area_1_height = (Number(grids[1]) + (Number(grids[3])>>1)).toFixed(2)
+    var area_1_width = Number((Number(grids[0]) + (Number(grids[2])>>1)).toFixed(2))
+    var area_1_height = Number((Number(grids[1]) + (Number(grids[3])>>1)).toFixed(2))
+    var crop1x = 0;
+    var crop1y = 0;
     var tmpDocName = picName+"tmp"
     app.documents.add(area_1_width, area_1_height, doc.resolution, tmpDocName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
     var tmpDoc = app.documents.getByName (tmpDocName)
     app.activeDocument.paste();
 
     preferences.rulerUnits = Units.PIXELS;
-    activeDocument.crop([0, 0, grids[0], grids[1]], 0);
+    activeDocument.crop([crop1x, crop1y, grids[0], grids[1]], 0);
+    activeDocument.copy();
+
+    app.activeDocument = curdoc;
+    app.activeDocument.paste();
+
+
+    var area_2_width = ( Number(coords[2]) - Number(grids[0]) - (Number(grids[2])>>1) ).toFixed(2) //(Number(grids[0]) + (Number(grids[2])>>1)).toFixed(2)
+    var area_2_height = ()  //(Number(grids[1]) + (Number(grids[3])>>1)).toFixed(2)
+    var crop2x = (Number(coords[2]) + (Number(grids[2])>>1)).toFixed(2)
+    var crop2y = (Number(coords[2]) + (Number(grids[2])>>1)).toFixed(2)
+    var tmpDocName = picName+"tmp"
+    app.documents.add(area_1_width, area_1_height, doc.resolution, tmpDocName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
+    var tmpDoc = app.documents.getByName (tmpDocName)
+    app.activeDocument.paste();
+
+    preferences.rulerUnits = Units.PIXELS;
+    activeDocument.crop([crop2x, crop2y, grids[0], grids[1]], 0);
     activeDocument.copy();
 
     app.activeDocument = curdoc;
