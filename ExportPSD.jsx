@@ -46,7 +46,7 @@ var componentSkinList = ["CommonBtn1_1Skin", "CommonBtn1_2Skin", "CommonBtn1_3Sk
 "CommonBtn2_1Skin", "CommonBtn2_2Skin", "CommonBtn2_3Skin", "CommonBtn2_4Skin",
 "bar1Skin", "bar1Skin_1", "bar21Skin", "bar20Skin", "bar19Skin", "bar18Skin", "bar17Skin", "bar16Skin", "bar15Skin",
 "CheckBox0", "CheckBox2", "CheckBox3", "CheckBox4",
- "ItemBaseSkin", "ItemIconSkin", "PriceIconSkin", "PowerLabelSkin"];
+ "ItemBaseSkin", "ItemIconSkin", "PriceIconSkin", "PriceIconSkin2", "PowerLabelSkin"];
 
  var componentListClass = ["Button", "Button", "Button", "Button",
  "Button", "Button", "Button", "Button",
@@ -617,11 +617,10 @@ function saveScalePiture(layer){
     
     var arr = layer.name.split("@")
     var nameStr = arr[0].split("_")
-    var grids = arr[1].split("_")
+    var grids = arr[1].split("_")//第五个的xy宽高
     
     // var nameStr = layer.name.split("_")
-    var area_1_width = (Number(grids[0]) + (Number(grids[2])>>1)).toFixed(2)
-    var area_1_height = (Number(grids[1]) + (Number(grids[3])>>1))
+    
 
     var picName = "";
     var nameLen = nameStr.length;
@@ -660,14 +659,28 @@ function saveScalePiture(layer){
 	app.documents.add(pxWidth, pxHeight, doc.resolution, picName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
     var curdoc = app.documents.getByName (picName)
     //将内存中的图层，复制到新文档。
-    app.activeDocument.paste();
-    app.activeDocument.paste();
-    app.activeDocument.paste();
+    // app.activeDocument.paste();
+    // app.activeDocument.paste();
+    // app.activeDocument.paste();
+    // app.activeDocument.paste();
+    
+    /*************左边 ***********/
+    var area_1_width = (Number(grids[0]) + (Number(grids[2])>>1)).toFixed(2)
+    var area_1_height = (Number(grids[1]) + (Number(grids[3])>>1)).toFixed(2)
+    var tmpDocName = picName+"tmp"
+    app.documents.add(area_1_width, area_1_height, doc.resolution, tmpDocName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
+    var tmpDoc = app.documents.getByName (tmpDocName)
     app.activeDocument.paste();
 
     preferences.rulerUnits = Units.PIXELS;
     activeDocument.crop([0, 0, grids[0], grids[1]], 0);
+    activeDocument.copy();
 
+    app.activeDocument = curdoc;
+    app.activeDocument.paste();
+
+
+    /******************* 保存图片 *******************/
     //blur number 模糊图像，默认 0.0 不模糊
     //定义一个变量[option]，表示图片的输出格式。
     var option = new ExportOptionsSaveForWeb();
