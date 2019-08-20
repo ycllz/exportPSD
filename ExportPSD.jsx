@@ -606,6 +606,19 @@ function savePicture(layer){
     //app.activeDocument = doc;
 }
 
+function validateScaleImage(obj)
+{
+	validateImage(obj);
+	if((parseInt(obj.top) + parseInt(obj.bottom)) >= obj.hegith)
+	{
+		logError("九宫图像图层【" + obj.name +  "】九宫图片top和bottom设定值之和不能大于图片height（高度）值！");
+	}
+	if((parseInt(obj.right) + parseInt(obj.left)) >= obj.width)
+	{
+		logError("九宫图像图层【" + obj.name +  "】九宫图片right和left设定值之和不能大于图片width（宽度）值！");
+	}
+}
+
 function saveScalePiture(layer){
     // var bounds = layer.boundsNoEffects;
 	//  //计算当前图层的宽度，为范围数组变量的第三个值与第一个值的差。
@@ -710,107 +723,39 @@ function saveScalePiture(layer){
 
     //宽带, 高度, 分辨率resolution, 名称, 文档颜色模式, 背景内容, 像素长宽比, 颜色位数, 色彩管理
     
-    //创建一个新文档，新文档的尺寸为裁切后4个区域拼起来的尺寸
-    //第一个文档
+    //创建一个新文档，新文档的尺寸为裁切后4个区域拼起来的尺寸,保存裁切后的图片，拼起来
     app.documents.add(pxWidth, pxHeight, doc.resolution, fileName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
     preferences.rulerUnits = Units.PIXELS;
     var doc4Scale = app.documents.getByName (fileName)
 
-    //第二个文档
-    // var picName2 = picName + "_2"
-	// app.documents.add(pxWidth, pxHeight, doc.resolution, picName2, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
-    // var picName2Doc = app.documents.getByName (picName2)
-    // app.activeDocument = picName2Doc;
-
+    //4个文档用于裁切用
+    //将内存中的图层，复制到新文档。
     var tmpDocName = fileName+"_tmp1"
     app.documents.add(new UnitValue(layerW+" px"), new UnitValue(layerH+" px"), doc.resolution, tmpDocName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
     preferences.rulerUnits = Units.PIXELS;
-    
-    app.activeDocument = dupDoc;
+    app.activeDocument.paste();
     
     //将内存中的图层，复制到新文档。
-    tmpDocName = fileName+"_tmp1"
-    tmpDoc = app.documents.getByName (tmpDocName)
-    app.activeDocument = tmpDoc;
-    app.activeDocument.paste();
-
     tmpDocName = fileName+"_tmp2"
     app.documents.add(new UnitValue(layerW+" px"), new UnitValue(layerH+" px"), doc.resolution, tmpDocName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
     preferences.rulerUnits = Units.PIXELS;
-    //将内存中的图层，复制到新文档。
     app.activeDocument.paste();
 
+    // //将内存中的图层，复制到新文档。
     // tmpDocName = fileName+"_tmp3"
     // app.documents.add(layerW, layerH, doc.resolution, tmpDocName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
     // preferences.rulerUnits = Units.PIXELS;
-    // //将内存中的图层，复制到新文档。
     // app.activeDocument.paste();
 
+    // //将内存中的图层，复制到新文档。
     // tmpDocName = fileName+"_tmp4"
     // app.documents.add(layerW, layerH, doc.resolution, tmpDocName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
     // preferences.rulerUnits = Units.PIXELS;
-    // //将内存中的图层，复制到新文档。
     // app.activeDocument.paste();
-
-    /*************左上 ***********/
-    // tmpDocName = fileName+"_tmp1"
-    // tmpDoc = app.documents.getByName (tmpDocName)
-    // app.activeDocument = tmpDoc;
-    
-    // preferences.rulerUnits = Units.PIXELS;
-    // activeDocument.crop([crop1x, crop1y, area_1_width, area_1_height], 0);
-    // tmpDoc.layers[0].copy()
-
-    // app.activeDocument = doc4Scale;
-    // app.activeDocument.paste();
-    // tmpDoc.close(SaveOptions.DONOTSAVECHANGES);
-    // $.gc()
     
     imageCrop(fileName, 2, startx2, starty2, endx2, endy2, docWidth2, docHeight2, translate2x, translate2y)
     imageCrop(fileName, 1, startx1, starty1, endx1, endy1, docWidth1, docHeight1, translate1x, translate1y)
     
-
-    /*************右上 ***********/
-    // tmpDocName = fileName+"_tmp2"
-    // tmpDoc = app.documents.getByName (tmpDocName)
-    // app.activeDocument = tmpDoc;
-    
-    // preferences.rulerUnits = Units.PIXELS;
-    // activeDocument.crop([crop2x, crop2y, area_2_width, area_2_height], 0);
-    // tmpDoc.layers[0].copy()
-
-    // app.activeDocument = doc4Scale;
-    // app.activeDocument.paste();
-    // tmpDoc.close(SaveOptions.DONOTSAVECHANGES);
-    // $.gc()
-
-    /************* 左下 ************/
-    // tmpDocName = fileName+"_tmp3"
-    // tmpDoc = app.documents.getByName (tmpDocName)
-    // app.activeDocument = tmpDoc;
-    
-    // preferences.rulerUnits = Units.PIXELS;
-    // activeDocument.crop([crop3x, crop3y, area_3_width, area_3_height], 0);
-    // tmpDoc.layers[0].copy()
-
-    // app.activeDocument = doc4Scale;
-    // app.activeDocument.paste();
-    // tmpDoc.close(SaveOptions.DONOTSAVECHANGES);
-    // $.gc()
-
-    /************* 右下角 ************/
-    // tmpDocName = fileName+"_tmp4"
-    // tmpDoc = app.documents.getByName (tmpDocName)
-    // app.activeDocument = tmpDoc;
-    
-    // preferences.rulerUnits = Units.PIXELS;
-    // activeDocument.crop([crop4x, crop4y, area_4_width, area_4_height], 0);
-    // tmpDoc.layers[0].copy()
-
-    // app.activeDocument = doc4Scale;
-    // app.activeDocument.paste();
-    // tmpDoc.close(SaveOptions.DONOTSAVECHANGES);
-    // $.gc()
 
     /******************* 保存图片 *******************/
     //blur number 模糊图像，默认 0.0 不模糊
@@ -865,6 +810,8 @@ function imageCrop(fileName, idCrop, startx, starty, endx, endy, docWidth, docHe
     var bottomu = new UnitValue(endy + " px")
     //[开始坐标x，开始坐标y，结束坐标x，结束坐标y]
     activeDocument.crop([leftu, topu, rightu, bottomu]);//, 0, uw, uh
+    
+    //activeDocument.trim (TrimType.TRANSPARENT, topu, leftu, bottomu, rightu)
     tmpDoc.layers[0].copy()
 
     //收集切割后的图片到这个文档
@@ -875,9 +822,12 @@ function imageCrop(fileName, idCrop, startx, starty, endx, endy, docWidth, docHe
     app.activeDocument.width
     app.activeDocument.height
     var pastelayer = app.activeDocument.layers[0]
-    var X = UnitValue(translatex+" px")
-    var Y = UnitValue(translatey+" px")
-    pastelayer.translate(X, Y);
+    var pasteCoords = getXYWH(pastelayer)
+    var pw = pasteCoords[2]>>1
+    var ph = pasteCoords[3]>>1
+    var X = UnitValue((translatex-pw)+" px")
+    var Y = UnitValue((translatey-ph)+" px")
+    pastelayer.translate(X, Y, AnchorPosition.TOPLEFT);
     tmpDoc.close(SaveOptions.DONOTSAVECHANGES);
     //$.gc()
 }
@@ -916,14 +866,14 @@ function getExportLayerString( layer, deepIndex ){
 
 function getImageComponentString(layer, deepIndex) {
     var skinName = image2ComponentMap[layer.name]
-    var coords = getXYWH[layer];
+    var coords = getXYWH(layer)
     return '<e:Component skinName="'+skinName+'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" />'
 }
 
 function getCustomComponentString(layer, deepIndex){
     var skinName = layer.name;
     var className = componentListClassMap[skinName]
-    var coords = getXYWH[layer];
+    var coords = getXYWH(layer)
     var defString = LB + tabsDeep[deepIndex] + '<'+defTypeMap[className]+':'+className+' skinName="'+skinName+'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" />'
     return defString;
 }
