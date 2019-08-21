@@ -1,8 +1,6 @@
 ﻿
-/**
-    Author:ycllz
-    code time:2019 year/8 month/12 day  
-*/
+
+
 
 
 /***************************************** 配置 可以修改配置*******************************************************/
@@ -14,16 +12,24 @@
 
 /**导出图片的质量，80是 80%*/
 var imageQuality = 80;
+var usedConfFilePath = true;
+/** 工作的根目录，不填的话，默认是 psd 文件的目录，导出的 图片 exml 文件都在 psd 文件目录下 */
+var rootPath = "E:/microtrunk/resource/总美术上传文件/ui/";//""//
+var isCoverCommonImag = false;
+var isCoverNonCommonImage = true;
+
+var confName = {}
+confName["rootPath"] = "rootPath";
+confName["imageQuality"] = "imageQuality"
+confName["usedConfFilePath"] = "usedConfFilePath"
+confName["isCoverCommonImage"] = "usedConfFilePath"
+confName["isCoverNonCommonImage"] = "usedConfFilePath"
+/********************************************************************************************/
 
 /**是否保存导出图片，只有图片图层命名带有下划线 _  的图层才会导出 **/
 var saveImages = true;
 /** 是否导出exml 配置文件，这个文件给前端用的 **/
 var saveExmlFiles = true;
-/** 工作的根目录，不填的话，默认是 psd 文件的目录，导出的 图片 exml 文件都在 psd 文件目录下 */
-var rootPath = "E:/microtrunk/resource/总美术上传文件/ui/";//""//
-
-var imagePath = rootPath + "assets/";
-
 /************************************************ 通用组件，需要加的时候让前端加 **************************************/
 
 /** componentList（自定义的） 跟 egretComponents（egret的组件） 两个就已经包括了所有组件，
@@ -176,6 +182,42 @@ function initData(){
         exportTypeMap[exportTypes[i]] = exportTypes[i];
     }
 
+    //  E:/microtrunk/resource/总美术上传文件/ui/
+    //  /e/microtrunk/resource/tools/psdExportUI/ExportPSD.jsx
+    var pathArr = $.fileName.split("/");
+    //盘符
+    var confPath = pathArr[1] + ":/";
+    rootPath = confPath;
+
+    var pathLen = pathArr.length - 1;
+    var rootPathLen = pathArr.length - 3;
+
+    for(var i= 2; i<pathLen; i++){
+        confPath = confPath + pathArr[i] + "/"
+        if(i<rootPathLen){
+            rootPath = rootPath + pathArr[i] + "/"
+        }
+    }
+
+    rootPath = rootPath + "总美术上传文件/ui/";
+    
+    confPath = confPath + "config.txt"
+    var configFile = new File(confPath)
+    configFile.open("r")
+    var fileStrMap = {}
+    while(!configFile.eof){
+        var str = configFile.readln();
+        if(str.indexOf("#")==0){
+            continue
+        }
+        var strArr = str.split("=");
+        fileStrMap[strArr[0]] = strArr[1];
+    }
+    if(fileStrMap["usedConfFilePath"] == "true"){
+        rootPath = fileStrMap["rootPath"]
+    }
+    
+    imageQuality = parseInt(fileStrMap["imageQuality"])
 }
 
 
@@ -284,9 +326,6 @@ function parsePSDFile(){
         exmlContents = concatString(exmlContents, parseLayer(layer, deepIndex))
     }
     
-    $.writeln ("本次导出的文件都在目录：" + dir)
-    alert("本次导出的文件都在目录：" + dir)
-
     var className = psdFileName
 
     exmlContents =
@@ -296,15 +335,13 @@ function parsePSDFile(){
     +'</e:Skin>'
     
     saveEXML(dir, psdFileName, exmlContents)
-
     activeDocument.close(SaveOptions.DONOTSAVECHANGES);
-    
+
+    $.writeln ("本次导出的文件都在目录：" + dir)
+    alert("本次导出的文件都在目录：" + dir)
     $.gc();
 }
 
-function savePNG(path, fileName, content) {
-    app.activeDocument
-}
 
 function saveEXML(path, fileName, contents) {
     var file = new File(path + fileName + ".exml");
@@ -337,13 +374,6 @@ function exchangeString(str) {
 
 /** return [x, y, width, height] */
 function getXYWH(layer) {
-    // var bounds = layer.bounds;
-    // if(layer.bounds){
-    //     bounds = layer.bounds;
-    // }
-    // else if(layer.position){
-    //     bounds = layer.position;
-    // }
     //获得当前图层的尺寸大小。这个尺寸排除了图层特效如阴影、外发光等产生的范围。
     // var bounds = layer.boundsNoEffects;
     /**
@@ -574,16 +604,6 @@ function savePicture(layer){
             picName = picName + "_" + nameStr[i]
         }
     }
-    
-    layer.copy();
-    //创建一个新文档，新文档的尺寸为拷贝到内存中图层的尺寸一致。
-    //宽带, 高度, 分辨率resolution, 名称, 文档颜色模式, 背景内容, 像素长宽比, 颜色位数, 色彩管理 
-    var pxWidth = new UnitValue( coords[2] + " px");
-    var pxHeight = new UnitValue( coords[3] + " px");
-	app.documents.add(pxWidth, pxHeight, doc.resolution, picName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
-    var curdoc = app.documents.getByName (picName)
-    //将内存中的图层，复制到新文档。
-    app.activeDocument.paste();
     //blur number 模糊图像，默认 0.0 不模糊
     //定义一个变量[option]，表示图片的输出格式。
     var option = new ExportOptionsSaveForWeb();
@@ -607,11 +627,27 @@ function savePicture(layer){
     var fileName = path + picName + "."+pictureType
     //定义一个变量[file]，作为图层输出的路径。
     var file = new File(fileName);
+    if(file.exists){
+        file.close()
+        $.writeln("文件已经存在--> " + fileName)
+        return;
+    }
+    
+    layer.copy();
+    //创建一个新文档，新文档的尺寸为拷贝到内存中图层的尺寸一致。
+    //宽带, 高度, 分辨率resolution, 名称, 文档颜色模式, 背景内容, 像素长宽比, 颜色位数, 色彩管理 
+    var pxWidth = new UnitValue( coords[2] + " px");
+    var pxHeight = new UnitValue( coords[3] + " px");
+	app.documents.add(pxWidth, pxHeight, doc.resolution, picName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
+    var curdoc = app.documents.getByName (picName)
+    //将内存中的图层，复制到新文档。
+    app.activeDocument.paste();
+    
     //调用[activeDocument]对象的[exportDocument]方法，将新文档导出为SaveDocumentType图片。
     curdoc.exportDocument(file, ExportType.SAVEFORWEB, option);
     
     file.close();
-
+    
     //调用[activeDocument]对象的[close]方法，关闭新文档。[close]方法内的参数，表示关闭新文档时，不再存储新文档。
     curdoc.close(SaveOptions.DONOTSAVECHANGES);
     //将Photoshop的当前文档，重置为网页设计稿文档。
@@ -620,19 +656,14 @@ function savePicture(layer){
 
 function validateScaleImage(layer, layerw, layerh, slicePaddingArr){
     if( (slicePaddingArr[0] + slicePaddingArr[2] - 4) > layerw ){
-        logError("九宫图像图层【" + layer.name +  "】九宫图片宽度 大于 图片宽度值了！");
+        alert("九宫图像图层【" + layer.name +  "】九宫图片宽度 大于 图片宽度值了！");
     }
     if( (slicePaddingArr[1] + slicePaddingArr[3] - 4) > layerh ){
-        logError("九宫图像图层【" + layer.name +  "】九宫图片高度 大于 图片高度值了！");
+        alert("九宫图像图层【" + layer.name +  "】九宫图片高度 大于 图片高度值了！");
     }
 }
 
 function saveScalePiture(layer){
-    // var bounds = layer.boundsNoEffects;
-	//  //计算当前图层的宽度，为范围数组变量的第三个值与第一个值的差。
-	// var width = bounds[2] - bounds[0];//厘米
-	//  //计算当前图层的高度，为范围数组变量的第四个值与第二个值的差。
-	// var height = bounds[3] - bounds[1];
     
     var layerXYWh = getXYWH (layer)
     
@@ -680,7 +711,36 @@ function saveScalePiture(layer){
         }
     }
 
-    var fileName = "scaleImage"
+    var fileName = "scaleImage"  
+    
+    //blur number 模糊图像，默认 0.0 不模糊
+    //定义一个变量[option]，表示图片的输出格式。
+    var option = new ExportOptionsSaveForWeb();
+    //设置图片输出时支持透明度。
+    option.transparency = true;
+    //设置图片输出的色彩范围为256色。
+    option.colors = 256;
+    option.format = SaveDocumentType.PNG;
+    option.PNG8 = false;
+    option.quality = imageQuality;//品质 。（0~100）。
+    
+    var pictureType = "png"
+    if(isJPG(layer)){
+        pictureType = "jpg"
+        //设置图片输出的格式为GIF格式。
+        option.format = SaveDocumentType.JPEG;
+        option.optimized = true;
+    }
+    var path = rootPath + psdFileName + slantingBar + nameStr[1] + slantingBar
+    new Folder(path).create();
+    var fileName = path + picName + "."+pictureType
+    //定义一个变量[file]，作为图层输出的路径。
+    var file = new File(fileName);
+    if(file.exists){
+        file.close()
+        $.writeln("文件已经存在--> " + fileName)
+        return;
+    }
     
     layer.copy();
 
@@ -737,30 +797,7 @@ function saveScalePiture(layer){
     doc4Scale.trim (TrimType.TRANSPARENT, true, true, true, true)
 
     /******************* 保存图片 *******************/
-    //blur number 模糊图像，默认 0.0 不模糊
-    //定义一个变量[option]，表示图片的输出格式。
-    var option = new ExportOptionsSaveForWeb();
-    //设置图片输出时支持透明度。
-    option.transparency = true;
-    //设置图片输出的色彩范围为256色。
-    option.colors = 256;
-    option.format = SaveDocumentType.PNG;
-    option.PNG8 = false;
-    option.quality = imageQuality;//品质 。（0~100）。
     
-    var pictureType = "png"
-    if(isJPG(layer)){
-        pictureType = "jpg"
-        //设置图片输出的格式为GIF格式。
-        option.format = SaveDocumentType.JPEG;
-        option.optimized = true;
-    }
-
-    var path = rootPath + psdFileName + slantingBar + nameStr[1] + slantingBar
-    new Folder(path).create();
-    var fileName = path + picName + "."+pictureType
-    //定义一个变量[file]，作为图层输出的路径。
-    var file = new File(fileName);
     //调用[activeDocument]对象的[exportDocument]方法，将新文档导出为SaveDocumentType图片。
     doc4Scale.exportDocument(file, ExportType.SAVEFORWEB, option);
     
@@ -844,6 +881,13 @@ function getCustomComponentString(layer, deepIndex){
 
 
 /*****************************  组件判断 ***********************************/
+
+function isCommonImage(layer){
+    if(layer.name.indexOf("cm")>=0){
+        return true;
+    }
+    return false;
+}
 
 function isImageComponent(layer) {
     if(image2ComponentMap[layer.name]){
