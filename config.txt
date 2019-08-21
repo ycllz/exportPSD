@@ -1,0 +1,16 @@
+#行开头是井号的是注释，等号左右不要包含空格，如 xx = yy 这样是不行的，程序没有过滤这种空格
+
+#是否覆盖公用图片，公用目录是 cm 目录。默认不覆盖公用图片。
+isCoverCommonImage=false
+
+#是否覆盖非公用图片。默认覆盖非公用图片。
+isCoverNonCommonImage=true
+
+#是否使用配置中的目录，如果true就是使用这里配置的目录，但是需要配置绝对路径（绝对路径是完整的路径）如：E:/microtrunk/resource/总美术上传文件/ui/
+usedConfFilePath=true
+
+#工作目录，可以不配置，默认程序会寻路到 resource/总美术上传文件/ui/ 这里
+rootPath=E:/microtrunk/resource/总美术上传文件/ui/
+
+#导出图片的质量 0-100
+imageQuality=80
