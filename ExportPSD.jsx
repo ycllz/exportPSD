@@ -1,29 +1,86 @@
 ﻿
 
-
-
-
-/***************************************** 配置 可以修改配置*******************************************************/
 /**
-        
-    图片默认png格式，命名的时候加上jpg就会导出jpg : ui_xxx_yyy_zzz_jpg   ;要导出的文本命名需要加 txt，特定组件的用特定组件名称
-    */
+ * 
+ * 导图片思路：图层组判断到命名为 ui_ 开始的，直接把图层组合并导出为一张图；此时如果图层组中的图层还有 ui_ 命名的也分别导出
+ * 
+ * 图片默认png格式，命名的时候加上jpg就会导出jpg : ui_xxx_yyy_zzz_jpg   ;要导出的文本命名需要加 txt，特定组件的用特定组件名称
+ * 
+ * 
+*/
 
+    /**
+     * 皮肤格式
+        
+        <?xml version="1.0" encoding="utf-8"?>
+        <e:Skin class="CommonDialog7Skin" width="720" height="1280" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" >
+    
+        <e:Component skinName="BG13" y="214" anchorOffsetX="0" width="552" anchorOffsetY="0" height="658"   x="84"/>
+
+        <e:Component anchorOffsetX="0" anchorOffsetY="0" touchEnabled="false" horizontalCenter="0" width="552" height="241" y="372" skinName="BG13"/>
+        <e:Button id="dialogCloseBtn" icon="ui_common_gb02_btn_n" x="609" y="305" skinName="CloseBtn">
+        </e:Button>
+        <e:Image source="ui_cm_p@0_bthb_png" y="284" horizontalCenter="0"/>
+
+        <e:Image x="210" y="391" width="318" height="40" source="ui_cm_04_1@58_2_58_2_png" scale9Grid="58,1,2,2"/>
+        <e:Label text="关卡奖励" y="310" style="title" horizontalCenter="0"/>
+        
+        <ns1:PetSkillItem id="skillItem" x="479" y="278" skinName="Pet_SkillItemSkin"/>
+        <ns1:PetSkillItem id="skillItem" x="479" y="278" skinName="Pet_SkillItemSkin"/>
+        
+        <e:Button id="btn_active" label="Button" x="32" y="328" skinName="CommonBtnSkin1" icon="ui_kfhd_icon_tsyl_png" anchorOffsetY="0" height="93" anchorOffsetX="0" width="99"/>
+        
+        <e:CheckBox id="cb_noAnimation" label="跳过动画" x="39" y="276" skinName="CheckBox0" scaleX="1" scaleY="1"/>
+        
+        <e:Button id="btn_findOne" label="购买1个" x="145" y="962" skinName="CommonBtn1_1Skin"/>
+        
+        <e:Image source="ui_cwxb_zi_tsscbcczyscw_png" y="646" horizontalCenter="0"/>
+        
+        <e:Scroller id="sl_scroller" width="647" height="186" y="703" anchorOffsetX="0" anchorOffsetY="0" scaleX="1" scaleY="1" bounces="false" x="40">
+			<e:List id="ls_logs" anchorOffsetY="0" useVirtualLayout="true">
+			<e:layout>
+				<e:VerticalLayout gap="10"/>
+			</e:layout>
+			</e:List>
+		</e:Scroller>
+        
+        <e:ProgressBar id="bar0" x="120" y="181" anchorOffsetX="0" width="485" skinName="bar21Skin"/>
+        
+        <ns1:PowerLabel id="totalPower" text="战 123456789" y="109" anchorOffsetX="0" horizontalCenter="0"/>
+
+        <e:Label id="nameLab" text="[1234]玩家昵称" x="163" y="29" size="25" anchorOffsetX="0" width="261" anchorOffsetY="0" height="29" multiline="true" wordWrap="true" lineSpacing="7" verticalAlign="top" textColor="0xda6d02" fontFamily="SimHei"/>
+        
+        </e:Skin>
+        
+    */
+    /**
+        //bounds UnitValue 数组
+        //图层区域。只读。[0,1,2,3] 分别是 0:左侧左边距 ，1:顶侧顶边距 ，2:右侧左边距 ，3:底侧顶边距。
+     **/
+    //$.writeln( layer.name +" , " + layer.typename + " , " + layer.kind + " , " + ( layer.bounds[1].as("px") ) )//LayerKind
+        //if(layers[i].typename == "LayerSet")//判断是否是图层组
+        //LayerKind.NORMAL
+        
+/***************************************** 配置 *******************************************************/
 
 /**导出图片的质量，80是 80%*/
 var imageQuality = 80;
 var usedConfFilePath = true;
 /** 工作的根目录，不填的话，默认是 psd 文件的目录，导出的 图片 exml 文件都在 psd 文件目录下 */
 var rootPath = "E:/microtrunk/resource/总美术上传文件/ui/";//""//
-var isCoverCommonImag = false;
+var isCoverCommonImage = false;
 var isCoverNonCommonImage = true;
+
+var scriptPath = "E:/microtrunk/resource/tools/psdExportUI/";
+var exmlPath = "E:/microtrunk/resource/总美术上传文件/ui/";//""//
+var subDir = "export";
 
 var confName = {}
 confName["rootPath"] = "rootPath";
 confName["imageQuality"] = "imageQuality"
 confName["usedConfFilePath"] = "usedConfFilePath"
-confName["isCoverCommonImage"] = "usedConfFilePath"
-confName["isCoverNonCommonImage"] = "usedConfFilePath"
+confName["isCoverCommonImage"] = "isCoverCommonImage"
+confName["isCoverNonCommonImage"] = "isCoverNonCommonImage"
 /********************************************************************************************/
 
 /**是否保存导出图片，只有图片图层命名带有下划线 _  的图层才会导出 **/
@@ -85,7 +142,6 @@ defTypeMap["btn"] = "e";
  * @list list_v_x：x列纵向滚动，行是无限的  ；list_h_y：y行横向滚动，列是无限的 ； list_t_x :x列纵向滚动，行是无限的
  */
 var egretComponents = ["list", "item", "txt"];
-
 /**
  * 这个先不管，已经跟通用的自定义组件重合了
  * 
@@ -95,7 +151,6 @@ var commonComponents = [ "checkbox", "btn", "bar", "power", "price"];
 var exportTypes = ["btn", "txt", "list", "item", "checkbox", "bar", "power", "price"]
 var exportTypesSkin = ["CommonBtn1_1Skin", "Label", "list", "item", "checkbox", "bar", "power", "price"]
 var exportTypeMap = {}
-
 
 /******************************************* 程序 不能改 **********************************************************/
 
@@ -134,6 +189,9 @@ var psdFileName = ""
 //定义一个变量[doc]，表示当前文档。
 var doc = app.activeDocument;
 var dupDoc
+var logFile
+var logStr = ""
+var imageExportPathMap = {}
 
 initData();
 parsePSDFile();
@@ -188,9 +246,10 @@ function initData(){
     //盘符
     var confPath = pathArr[1] + ":/";
     rootPath = confPath;
+    scriptPath = confPath;
 
     var pathLen = pathArr.length - 1;
-    var rootPathLen = pathArr.length - 3;
+    var rootPathLen = (pathArr.length>3) ? pathArr.length - 3 : pathArr.length - 1;
 
     for(var i= 2; i<pathLen; i++){
         confPath = confPath + pathArr[i] + "/"
@@ -198,7 +257,7 @@ function initData(){
             rootPath = rootPath + pathArr[i] + "/"
         }
     }
-
+    scriptPath = confPath;
     rootPath = rootPath + "总美术上传文件/ui/";
     
     confPath = confPath + "config.txt"
@@ -213,13 +272,18 @@ function initData(){
         var strArr = str.split("=");
         fileStrMap[strArr[0]] = strArr[1];
     }
-    if(fileStrMap["usedConfFilePath"] == "true"){
+    if( Boolean(parseInt(fileStrMap["usedConfFilePath"])) ){
         rootPath = fileStrMap["rootPath"]
     }
+
+    exmlPath = rootPath;
     
     imageQuality = parseInt(fileStrMap["imageQuality"])
-}
+    isCoverCommonImage = Boolean(parseInt(fileStrMap["isCoverCommonImage"]))
+    isCoverNonCommonImage = Boolean(parseInt(fileStrMap["isCoverNonCommonImage"]))
 
+    
+}
 
 function parsePSDFile(){
     var savedRulerUnits = app.preferences.rulerUnits;
@@ -234,9 +298,11 @@ function parsePSDFile(){
     var exportLayers = []
     
     if(rootPath==""){
-        rootPath = app.activeDocument.path + "/export/"
+        rootPath = app.activeDocument.path + "/" + getImageSubDir()
+        exmlPath = app.activeDocument.path + "/exml/"
     }else{
-        rootPath = rootPath + "export/"
+        rootPath = rootPath + getImageSubDir()
+        exmlPath = exmlPath + "exml/"
     }
     //保存exml文件的文件名
     var name = decodeURI(app.activeDocument.name);
@@ -244,13 +310,14 @@ function parsePSDFile(){
     if(psdFileName==""){
         psdFileName = name;
     }
-	var dir = rootPath + psdFileName + slantingBar;//app.activeDocument.path + 
-
+	var dir = rootPath;//app.activeDocument.path + 
+    var exmlDir = exmlPath + psdFileName + slantingBar;
     new Folder( dir ).create();
+    new Folder( exmlDir ).create();
     
     dupDoc = app.activeDocument.duplicate()
     
-    //new Folder( imagePath ).create();
+    /**　检出需要导出图层 */
     var layers = app.activeDocument.layers
     var len = layers.length;
     for(var i=len-1; i>=0; i--){
@@ -258,65 +325,14 @@ function parsePSDFile(){
         //bounds UnitValue 数组
         //图层区域。只读。[0,1,2,3] 分别是 0:左侧左边距 ，1:顶侧顶边距 ，2:右侧左边距 ，3:底侧顶边距。
         
-        //$.writeln( layer.name +" , " + layer.typename + " , " + layer.kind + " , " + ( layer.bounds[1].as("px") ) )//LayerKind
-        //if(layers[i].typename == "LayerSet")//判断是否是图层组
-        //LayerKind.NORMAL
         if(layer.visible){
-            if(isExportLayer (layer) && (!layer.isBackgroundLayer)){//这个图层需要导出
+            if(isExportLayer(layer) && (!layer.isBackgroundLayer)){//这个图层需要导出
                 exportLayers.push(layer);
             }
         }
     }
     
-    /**
-     * 皮肤格式
-        
-        <?xml version="1.0" encoding="utf-8"?>
-        <e:Skin class="CommonDialog7Skin" width="720" height="1280" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" >
-    
-        <e:Component skinName="BG13" y="214" anchorOffsetX="0" width="552" anchorOffsetY="0" height="658"   x="84"/>
-
-        <e:Component anchorOffsetX="0" anchorOffsetY="0" touchEnabled="false" horizontalCenter="0" width="552" height="241" y="372" skinName="BG13"/>
-        <e:Button id="dialogCloseBtn" icon="ui_common_gb02_btn_n" x="609" y="305" skinName="CloseBtn">
-        </e:Button>
-        <e:Image source="ui_cm_p@0_bthb_png" y="284" horizontalCenter="0"/>
-
-        <e:Image x="210" y="391" width="318" height="40" source="ui_cm_04_1@58_2_58_2_png" scale9Grid="58,1,2,2"/>
-        <e:Label text="关卡奖励" y="310" style="title" horizontalCenter="0"/>
-        
-        <ns1:PetSkillItem id="skillItem" x="479" y="278" skinName="Pet_SkillItemSkin"/>
-        <ns1:PetSkillItem id="skillItem" x="479" y="278" skinName="Pet_SkillItemSkin"/>
-        
-        <e:Button id="btn_active" label="Button" x="32" y="328" skinName="CommonBtnSkin1" icon="ui_kfhd_icon_tsyl_png" anchorOffsetY="0" height="93" anchorOffsetX="0" width="99"/>
-        
-        <e:CheckBox id="cb_noAnimation" label="跳过动画" x="39" y="276" skinName="CheckBox0" scaleX="1" scaleY="1"/>
-        
-        <e:Button id="btn_findOne" label="购买1个" x="145" y="962" skinName="CommonBtn1_1Skin"/>
-        
-        <e:Image source="ui_cwxb_zi_tsscbcczyscw_png" y="646" horizontalCenter="0"/>
-        
-        <e:Scroller id="sl_scroller" width="647" height="186" y="703" anchorOffsetX="0" anchorOffsetY="0" scaleX="1" scaleY="1" bounces="false" x="40">
-			<e:List id="ls_logs" anchorOffsetY="0" useVirtualLayout="true">
-			<e:layout>
-				<e:VerticalLayout gap="10"/>
-			</e:layout>
-			</e:List>
-		</e:Scroller>
-        
-        <e:ProgressBar id="bar0" x="120" y="181" anchorOffsetX="0" width="485" skinName="bar21Skin"/>
-        
-        <ns1:PowerLabel id="totalPower" text="战 123456789" y="109" anchorOffsetX="0" horizontalCenter="0"/>
-
-        <e:Label id="nameLab" text="[1234]玩家昵称" x="163" y="29" size="25" anchorOffsetX="0" width="261" anchorOffsetY="0" height="29" multiline="true" wordWrap="true" lineSpacing="7" verticalAlign="top" textColor="0xda6d02" fontFamily="SimHei"/>
-        
-        </e:Skin>
-        
-    */
-    /**
-        //bounds UnitValue 数组
-        //图层区域。只读。[0,1,2,3] 分别是 0:左侧左边距 ，1:顶侧顶边距 ，2:右侧左边距 ，3:底侧顶边距。
-     **/
-        
+    /** 开始处理需要导出图层 */
     exmlContents = ""
     deepIndex = 1;
     var exLen = exportLayers.length;
@@ -328,20 +344,50 @@ function parsePSDFile(){
     
     var className = psdFileName
 
+    /** exml 文件输出 */
     exmlContents =
     '<?xml version="1.0" encoding="utf-8"?>'+LB
     +'<e:Skin class="' + className + 'Skin" width="720" height="1280" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" >'+LB
     +exmlContents+LB
     +'</e:Skin>'
     
-    saveEXML(dir, psdFileName, exmlContents)
+    saveEXML(exmlDir, psdFileName, exmlContents)
+
     activeDocument.close(SaveOptions.DONOTSAVECHANGES);
 
-    $.writeln ("本次导出的文件都在目录：" + dir)
-    alert("本次导出的文件都在目录：" + dir)
+    // writeLog("本次导出的图片文件都在目录：" + dir)
+    // writeLog("本次导出的exml文件都在目录：" + exmlDir)
+
+    saveLog();
+    var picPath = ""
+    for(var key in imageExportPathMap){
+        picPath = picPath + imageExportPathMap[key] + "\n"
+    }
+    var strEnd = "\n\n请记得也把导出exml文件提交svn\n\n图片该怎么处理就怎么处理";
+    var alertStr = "本次导出的图片文件都在目录：\n" + picPath + "\n本次导出的exml文件都在目录：\n" + exmlDir + strEnd;
+    alert(alertStr)
     $.gc();
 }
 
+function getImageSubDir(){
+    if(subDir==""){
+        return ""
+    }
+    return subDir + slantingBar
+}
+
+function saveLog() {
+    writeLog("导出完成\n")
+    var logFile = new File(scriptPath + "log.txt")
+    logFile.open("w")
+    logFile.writeln(logStr);
+    logFile.close()
+}
+
+function writeLog(str) {
+    var date = new Date();
+    logStr = date.toLocaleString() + " :    " + str + "\n" + logStr;
+}
 
 function saveEXML(path, fileName, contents) {
     var file = new File(path + fileName + ".exml");
@@ -377,12 +423,11 @@ function getXYWH(layer) {
     //获得当前图层的尺寸大小。这个尺寸排除了图层特效如阴影、外发光等产生的范围。
     // var bounds = layer.boundsNoEffects;
     /**
-            
-    crops the document
-    the bounds parameter is an array of four coordinates for the region remaining after cropping
-    裁剪文档
-    bounds参数是裁剪后剩余区域的四个坐标数组。
-        */
+        crops the document
+        the bounds parameter is an array of four coordinates for the region remaining after cropping
+        裁剪文档
+        bounds参数是裁剪后剩余区域的四个坐标数组。
+    */
     var bounds = layer.bounds;
     var xcoord = Math.floor(bounds[0].as("px"));
     var ycoord = Math.floor(bounds[1].as("px"));
@@ -395,7 +440,7 @@ function getXYWH(layer) {
 
 function parseLayer(layer, deepIndex) {
     exmlContents = ""
-    if(layer && isImageComponent(layer)){//一般是通用底图
+    if(layer && isImageComponent(layer)){//一般是通用底图 如 BG.exml
         // exmlContents = concatString(exmlContents, getImageComponentString(layer, deepIndex))
         exmlContents = getImageComponentString(layer, deepIndex)
     }
@@ -403,19 +448,35 @@ function parseLayer(layer, deepIndex) {
         // exmlContents = concatString(exmlContents, getCustomComponentString(layer, deepIndex))
         exmlContents = getCustomComponentString(layer, deepIndex)
     }
+    else if(layer && isUILayerSet(layer)){
+        //图层组，需要合并导出的图层组，开头以 ui_ 命名
+        exmlContents = exportUILayerSet(layer, deepIndex)
+    }
     else if(layer && isListComponent (layer.name)){//列表，特殊的图层组
         // exmlContents = concatString(exmlContents, exportList(layer, deepIndex))
         exmlContents = exportList(layer, deepIndex)
     }
     else if(layer && layer.typename == "LayerSet"){//判断是否是图层组
         // exmlContents = concatString(exmlContents, exportLayerSet( layer, deepIndex))
-        exmlContents = exportLayerSet( layer, deepIndex)
+        exmlContents = exportLayerSet(layer, deepIndex)
     }
     else if(layer){//图层，每个模块自己的图片 文本
         // exmlContents = concatString(exmlContents, exportArtlayer( layer, deepIndex))
-        exmlContents = exportArtlayer( layer, deepIndex)
+        exmlContents = exportArtlayer(layer, deepIndex)
     }
     return exmlContents;
+}
+
+function exportUILayerSet(layer) {
+    if( isScaleImage (layer) ){
+        return getScaleImageString(layer, deepIndex)
+    }
+    else if( isUIPicture(layer) ){
+        return getImageString(layer, deepIndex)
+    }
+    else if( isTxt(layer) ){
+        return getTxtString(layer, deepIndex)
+    }
 }
 
 /** 列表*/
@@ -494,14 +555,10 @@ function exportListItem( layerSet ){
 
 /** 图层组*/
 function exportLayerSet( layerSet, deepIndex ){
-    
     var layerSetString = "";
-    
     for (var i =0; i<layerSet.length; i++){
         if(layerSet[i].typename == "LayerSet"){//是否是图层组
-            
             //layerSetString = layerSetString + getLayerSetString( layerSet[i], deepIndex );
-            
             parseLayer( layerSet[i].layers, deepIndex+1 );//递归
         }
         else{
@@ -551,13 +608,11 @@ function getTxtString(layer, deepIndex) {
 
 function getScaleImageString(layer, deepIndex) {
     var coords = getXYWH(layer)
-    
-    var arr = layer.name.split("@")
-    var grids = arr[1].split("_")
-    var gridStr = grids[0] + "," + grids[1] + "," + grids[2] + "," + grids[3]
-    
     //导出图片
-    saveScalePiture(layer)
+    // var arr = layer.name.split("@")
+    // var grids = arr[1].split("_")//第五个的xy宽高
+    var grids = saveScalePiture(layer)
+    var gridStr = grids[0] + "," + grids[1] + "," + grids[2] + "," + grids[3]
     
     return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" scale9Grid="'+gridStr+'"/>'
 }
@@ -568,6 +623,7 @@ function getImageString(layer, deepIndex) {
     
     //导出图片
     savePicture(layer);
+    
     
     return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" />'
 }
@@ -622,16 +678,20 @@ function savePicture(layer){
         option.format = SaveDocumentType.JPEG;
         option.optimized = true;
     }
-    var path = rootPath + psdFileName + slantingBar + nameStr[1] + slantingBar
+    var path = rootPath + nameStr[1] + slantingBar
     new Folder(path).create();
     var fileName = path + picName + "."+pictureType
     //定义一个变量[file]，作为图层输出的路径。
     var file = new File(fileName);
-    if(file.exists){
-        file.close()
-        $.writeln("文件已经存在--> " + fileName)
-        return;
+    // if(file.exists){
+    //     file.close()
+    //     writeLog("文件已经存在--> " + fileName)
+    //     return;
+    // }
+    if(!needExportImage(file, layer, fileName)){
+        return
     }
+    imageExportPathMap[path] = path;
     
     layer.copy();
     //创建一个新文档，新文档的尺寸为拷贝到内存中图层的尺寸一致。
@@ -652,6 +712,7 @@ function savePicture(layer){
     curdoc.close(SaveOptions.DONOTSAVECHANGES);
     //将Photoshop的当前文档，重置为网页设计稿文档。
     //app.activeDocument = doc;
+    $.gc()
 }
 
 function validateScaleImage(layer, layerw, layerh, slicePaddingArr){
@@ -663,6 +724,22 @@ function validateScaleImage(layer, layerw, layerh, slicePaddingArr){
     }
 }
 
+function needExportImage(file, layer, fileName) {
+    if(file.exists){
+        if(isCommonImage(layer) && !isCoverCommonImage){
+            file.close()
+            writeLog("文件已经存在--> " + fileName)
+            return false;
+        }
+        if(!isCommonImage(layer) && !isCoverNonCommonImage){
+            file.close()
+            writeLog("文件已经存在--> " + fileName)
+            return false;
+        }
+    }
+    return true;
+}
+
 function saveScalePiture(layer){
     
     var layerXYWh = getXYWH (layer)
@@ -670,6 +747,7 @@ function saveScalePiture(layer){
     var arr = layer.name.split("@")
     var nameStr = arr[0].split("_")
     var middleXYWH = arr[1].split("_")//第五个的xy宽高
+    
     
     var layerX = Number(layerXYWh[0])
     var layerY = Number(layerXYWh[1])
@@ -682,6 +760,29 @@ function saveScalePiture(layer){
     var middleH = Number(middleXYWH[3])
     // var nameStr = layer.name.split("_")
     
+    var slicePaddingArr = []//第一个与第四个的宽高 Result: 300,140,280,160
+    var sliceArr = []
+    if(arr.length==3){//第三个是切psd中的大图的，然后合成小图
+        sliceArr = arr[2].split("_")//用来切psd中大图
+        //9宫图上下左右不对称的
+        var middleSliceX = Number(sliceArr[0])
+        var middleSliceY = Number(sliceArr[1])
+        var middleSliceW = Number(sliceArr[2])
+        var middleSliceH = Number(sliceArr[3])
+
+        slicePaddingArr[0] = Math.floor(middleSliceX + (middleSliceW>>1))
+        slicePaddingArr[1] = Math.floor(middleSliceY + (middleSliceH>>1))
+        slicePaddingArr[2] = Math.floor(middleSliceX + (middleSliceW>>1))
+        slicePaddingArr[3] = Math.floor(middleSliceY + (middleSliceH>>1))
+    }
+    else{
+        //9宫图是左右上下一样的，对称的
+        slicePaddingArr[0] = Math.floor(middleX + (middleW>>1))
+        slicePaddingArr[1] = Math.floor(middleY + (middleH>>1))
+        slicePaddingArr[2] = Math.floor(middleX + (middleW>>1))
+        slicePaddingArr[3] = Math.floor(middleY + (middleH>>1))
+    }
+    
 
     var picName = "";
     var nameLen = nameStr.length;
@@ -693,25 +794,9 @@ function saveScalePiture(layer){
             picName = picName + "_" + nameStr[i]
         }
     }
-    var gridsLen = middleXYWH.length;
-    if(isJPG(layer)){
-        gridsLen = middleXYWH.length - 1;
-    }
-    picName = picName + "@"
-    for(var i=0; i<gridsLen; i++){
-        var tmp = middleXYWH[i]
-        tmp = tmp.toLowerCase()
-        if(tmp=="png" || tmp=="jpg"){
-            break
-        }
-        if(picName == ""){
-            picName = middleXYWH[i]
-        }else{
-            picName = picName + "_" + middleXYWH[i]
-        }
-    }
+    picName = picName + "@" + middleXYWH[0] + "_" + middleXYWH[1] + "_" + middleXYWH[2] + "_" + middleXYWH[3];
 
-    var fileName = "scaleImage"  
+    var scaleDocName = "scaleDoc"  
     
     //blur number 模糊图像，默认 0.0 不模糊
     //定义一个变量[option]，表示图片的输出格式。
@@ -731,16 +816,15 @@ function saveScalePiture(layer){
         option.format = SaveDocumentType.JPEG;
         option.optimized = true;
     }
-    var path = rootPath + psdFileName + slantingBar + nameStr[1] + slantingBar
+    var path = rootPath + nameStr[1] + slantingBar
     new Folder(path).create();
-    var fileName = path + picName + "."+pictureType
+    var scaleDocName = path + picName + "."+pictureType
     //定义一个变量[file]，作为图层输出的路径。
-    var file = new File(fileName);
-    if(file.exists){
-        file.close()
-        $.writeln("文件已经存在--> " + fileName)
-        return;
+    var file = new File(scaleDocName);
+    if(!needExportImage(file, layer, scaleDocName)){
+        return middleXYWH
     }
+    imageExportPathMap[path] = path;
     
     layer.copy();
 
@@ -751,19 +835,13 @@ function saveScalePiture(layer){
     app.preferences.rulerUnits = Units.PIXELS;
     app.preferences.typeUnits = TypeUnits.PIXELS;
     //创建一个新文档，新文档的尺寸为裁切后4个区域拼起来的尺寸,保存裁切后的图片，拼起来
-    app.documents.add(pxWidth, pxHeight, dupDoc.resolution, fileName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
+    app.documents.add(pxWidth, pxHeight, dupDoc.resolution, picName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
     app.activeDocument.paste();
 
-    var doc4Scale = app.documents.getByName (fileName)
+    var doc4Scale = app.documents.getByName (picName)
     
     var width = doc4Scale.width;
     var height = doc4Scale.height;
-
-    var slicePaddingArr = []//第一个与第四个的宽高 Result: 300,140,280,160
-    slicePaddingArr[0] = middleX + 2;
-    slicePaddingArr[1] = middleY + 2;
-    slicePaddingArr[2] = layerW - middleX - middleW + 2;
-    slicePaddingArr[3] = layerH - middleY - middleH + 2;
 
     validateScaleImage(layer, layerW, layerH, slicePaddingArr);
 
@@ -807,42 +885,82 @@ function saveScalePiture(layer){
     doc4Scale.close(SaveOptions.DONOTSAVECHANGES);
     //将Photoshop的当前文档，重置为网页设计稿文档。
     //app.activeDocument = doc;
+    //$.gc()
+    return middleXYWH;
 }
 
 /**
-            Selection
-选区。
+ *  Document
+ * 
+    Selection
+    选区。
 
-属性
-bounds UnitValue 数组
-选区边界位置，只读。[0,1,2,3] 分别是 0:左侧左边距 1:顶侧顶边距 2:右侧左边距 3:底侧顶边距。
-http://ww3.sinaimg.cn/large/c35419f1gw1f2o59oqnecj20b409w3yn.jpg
+    属性
+    bounds UnitValue 数组
+    选区边界位置，只读。[0,1,2,3] 分别是 0:左侧左边距 1:顶侧顶边距 2:右侧左边距 3:底侧顶边距。
+    http://ww3.sinaimg.cn/large/c35419f1gw1f2o59oqnecj20b409w3yn.jpg
 
 
-而使用 UnitValue(单位值字符串) 可以创建一个单位值：
-var a = UnitValue("22 px")
-单位名可以是：
+    而使用 UnitValue(单位值字符串) 可以创建一个单位值：
+    var a = UnitValue("22 px")
+    单位名可以是：
 
-像素	px	点	pt
-英寸	in	派卡	pc
-厘米	cm	百分比	%
-毫米	mm		
-UnitValue 有用于转换的 as() 和 convert() 方法：
+    像素	px	点	pt
+    英寸	in	派卡	pc
+    厘米	cm	百分比	%
+    毫米	mm		
+    UnitValue 有用于转换的 as() 和 convert() 方法：
 
-as(单位名) 可以返回一个指定单位的单位值，原变量单位不变。
-convert(单位名) 把原单位值转换成指定单位，转换成功返回真。
-        */
-
+    as(单位名) 可以返回一个指定单位的单位值，原变量单位不变。
+    convert(单位名) 把原单位值转换成指定单位，转换成功返回真。
+    */
+/** 默认png，返回图片名称，含后缀的，_png _jpg */
 function getImageName(layer) {
     var sourceName = ""
-    if(isJPG(layer)){
-        sourceName = layer.name
+    var nameArr = []
+    var hasSuffix = false
+    if(layer.name.indexOf("@")>0){
+        //九宫图
+        nameArr = layer.name.split("@");
+        var middleXYWH = nameArr[1].split("_");
+        var picName = "";
+        var nameLen = nameStr.length;
+        for(var i=0; i<nameLen; i++){
+            if(picName == ""){
+                picName = nameStr[i];
+            }else{
+                picName = picName + "_" + nameStr[i];
+            }
+        }
+        picName = picName + "@" + middleXYWH[0] + "_" + middleXYWH[1] + "_" + middleXYWH[2] + "_" + middleXYWH[3];
+        if(isJPG(layer.name)){
+            picName = picName + "_jpg";
+        }else{
+            picName = picName + "_png";
+        }
+        hasSuffix = true;
+    }else{
+        //非九宫图
+        nameArr = layer.name.split("_");
+        var len = nameArr.length;
+        for(var i=0; i<len; i++){
+            var tmp = nameStr[i];
+            tmp = tmp.toLowerCase()
+            if(tmp=="png" || tmp=="jpg"){
+                sourceName = sourceName + "_" + tmp;
+                hasSuffix = true;
+            }else{
+                if(sourceName==""){
+                    sourceName = nameStr[i];
+                }else{
+                    sourceName = sourceName + "_" +nameStr[i];
+                }
+            }
+        }
     }
-    else if(isPNG(layer)){
-        sourceName = layer.name
-    }
-    else{
-        sourceName = layer.name + "_png"
+
+    if(!hasSuffix){
+        sourceName = sourceName + "_png";
     }
     return sourceName
 }
@@ -851,25 +969,26 @@ function getImageName(layer) {
     "ItemBaseSkin", "ItemIconSkin", "power"
     
 ***/
-function getExportLayerString( layer, deepIndex ){
-    if(isTxt (layer)){
-        return getTxtString(layer, deepIndex)
-    }
-    else if(isScaleImage (layer)){
-        return getScaleImageString(layer, deepIndex)
-    }
-    else if(isUIPicture (layer)){
-        return getImageComponentString(layer, deepIndex)
-    }
-}
+// function getExportLayerString( layer, deepIndex ){
+//     if(isTxt (layer)){
+//         return getTxtString(layer, deepIndex)
+//     }
+//     else if(isScaleImage (layer)){
+//         return getScaleImageString(layer, deepIndex)
+//     }
+//     else if(isUIPicture (layer)){
+//         return getImageComponentString(layer, deepIndex)
+//     }
+// }
 
 /*****************************  获取组件exml文本 ***********************************/
 
-function getImageComponentString(layer, deepIndex) {
-    var skinName = image2ComponentMap[layer.name]
-    var coords = getXYWH(layer)
-    return '<e:Component skinName="'+skinName+'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" />'
-}
+// function getImageComponentString(layer, deepIndex) {
+//     var imgName = getImageName(layer);
+//     var skinName = image2ComponentMap[imgName];
+//     var coords = getXYWH(layer);
+//     return '<e:Component skinName="'+skinName+'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" />';
+// }
 
 function getCustomComponentString(layer, deepIndex){
     var skinName = layer.name;
@@ -881,13 +1000,6 @@ function getCustomComponentString(layer, deepIndex){
 
 
 /*****************************  组件判断 ***********************************/
-
-function isCommonImage(layer){
-    if(layer.name.indexOf("cm")>=0){
-        return true;
-    }
-    return false;
-}
 
 function isImageComponent(layer) {
     if(image2ComponentMap[layer.name]){
@@ -901,6 +1013,13 @@ function isCustomComponent(layer) {
         return true;
     }
     // for(var i=0;)
+    return false;
+}
+
+function isCommonImage(layer){
+    if(layer.name.indexOf("_cm")>=0){
+        return true;
+    }
     return false;
 }
 
@@ -920,7 +1039,7 @@ function isScaleImage( layer ){
 }
 
 function isUIPicture( layer ){
-    if(layer.name.indexOf("ui")>=0){
+    if(layer.name.indexOf("ui_")>=0){
         return true;
     }
 }
@@ -928,7 +1047,7 @@ function isUIPicture( layer ){
 function isJPG(layer) {
     var imgName = layer.name;
     imgName = imgName.toLowerCase()
-    if(imgName.indexOf("jpg")>=0){
+    if(imgName.indexOf("_jpg")>=0){
         return true
     }
     return false
@@ -937,7 +1056,7 @@ function isJPG(layer) {
 function isPNG(layer) {
     var imgName = layer.name;
     imgName = imgName.toLowerCase()
-    if(imgName.indexOf("png")>=0){
+    if(imgName.indexOf("_png")>=0){
         return true
     }
     return false
@@ -987,6 +1106,13 @@ function isItemIconSkin(layer){
 
 
 /*****************************  组件判断 ***********************************/
+
+function isUILayerSet(layer) {
+    if(layer && layer.typename=="LayerSet" && layer.name.indexOf("ui_")){
+        return true
+    }
+    return false
+}
 
 function isItemComponent( layername ){
     if(layername.indexOf("item")>=0){
