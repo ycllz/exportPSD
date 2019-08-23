@@ -18,7 +18,11 @@
         <e:Component skinName="BG13" y="214" anchorOffsetX="0" width="552" anchorOffsetY="0" height="658"   x="84"/>
 
         <e:Component anchorOffsetX="0" anchorOffsetY="0" touchEnabled="false" horizontalCenter="0" width="552" height="241" y="372" skinName="BG13"/>
+        
         <e:Button id="dialogCloseBtn" icon="ui_common_gb02_btn_n" x="609" y="305" skinName="CloseBtn">
+        <e:Button id="buy10" x="368" y="0" label="" icon="ui_cz_gm10g" skinName="Btn8Skin"/>
+
+        
         </e:Button>
         <e:Image source="ui_cm_p@0_bthb_png" y="284" horizontalCenter="0"/>
 
@@ -924,12 +928,12 @@ function getImageName(layer) {
         nameArr = layer.name.split("@");
         var middleXYWH = nameArr[1].split("_");
         var picName = "";
-        var nameLen = nameStr.length;
+        var nameLen = nameArr.length;
         for(var i=0; i<nameLen; i++){
             if(picName == ""){
-                picName = nameStr[i];
+                picName = nameArr[i];
             }else{
-                picName = picName + "_" + nameStr[i];
+                picName = picName + "_" + nameArr[i];
             }
         }
         picName = picName + "@" + middleXYWH[0] + "_" + middleXYWH[1] + "_" + middleXYWH[2] + "_" + middleXYWH[3];
@@ -944,16 +948,16 @@ function getImageName(layer) {
         nameArr = layer.name.split("_");
         var len = nameArr.length;
         for(var i=0; i<len; i++){
-            var tmp = nameStr[i];
+            var tmp = nameArr[i];
             tmp = tmp.toLowerCase()
             if(tmp=="png" || tmp=="jpg"){
                 sourceName = sourceName + "_" + tmp;
                 hasSuffix = true;
             }else{
                 if(sourceName==""){
-                    sourceName = nameStr[i];
+                    sourceName = nameArr[i];
                 }else{
-                    sourceName = sourceName + "_" +nameStr[i];
+                    sourceName = sourceName + "_" +nameArr[i];
                 }
             }
         }
@@ -1134,8 +1138,11 @@ function isExportLayer( layer ){
         return true
     }
     var layername = layer.name
-    if(layername.indexOf("_")>=0){
+    if(layername.indexOf("ui_")>=0){
         return true;
+    }
+    if(layername.indexOf("txt")>=0){
+        return true
     }
     for(var i=0; i<exportTypes.length; i++){
         var typeStr = exportTypes[i]
