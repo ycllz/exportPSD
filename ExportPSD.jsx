@@ -563,7 +563,7 @@ function exportLayerSet( layerSet, deepIndex ){
     for (var i =0; i<layerSet.length; i++){
         if(layerSet[i].typename == "LayerSet"){//是否是图层组
             //layerSetString = layerSetString + getLayerSetString( layerSet[i], deepIndex );
-            parseLayer( layerSet[i].layers, deepIndex+1 );//递归
+            exportLayerSet( layerSet[i].layers, deepIndex+1 );//递归
         }
         else{
             //一般图层
