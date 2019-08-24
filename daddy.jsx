@@ -1,11 +1,13 @@
 ﻿
 
 var rootPath = "E:/stoneage/art/ui/assets";
-var exmlPath = "E:/stoneage/art/ui/";
+var exmlPath = "E:/stoneage/art/ui";
 
-var isCoverCommonImage = false;
+var imageQuality = 85;
+var usePNG8 = false;
+var isCoverCommonImage = true;
 var isCoverNonCommonImage = true;
-var imageQuality = 80;
+
 
 var exmlContents="";
 var slantingBar = "/";
@@ -13,34 +15,67 @@ var LB = "\n"
 var tabsDeep = ["","\t", "\t\t", "\t\t\t", "\t\t\t\t", "\t\t\t\t\t", "\t\t\t\t\t\t", "\t\t\t\t\t\t\t", "\t\t\t\t\t\t\t\t"]
 var deepIndex = 1;
 
+var scaleImage = 1
+
 var dupDoc;
 var imageExportPathMap = {}
+var exportLayers = []
 
 //定义一个变量[doc]，表示当前文档。
 var doc = app.activeDocument;
+
+pngSaveOptions = new PNGSaveOptions();
+pngSaveOptions.compression = 0
+pngSaveOptions.interlaced = false
+
+var jpgSaveOptions = new JPEGSaveOptions();
+jpgSaveOptions.embedColorProfile = true;
+jpgSaveOptions.formatOptions = FormatOptions.STANDARDBASELINE;
+jpgSaveOptions.matte = MatteType.NONE;
+jpgSaveOptions.quality = 10
+
+// imageMap2Component["图片名称"] = "组件名称"
+var imageMap2Component = {};
+
 
 initData();
 parsePSDFile();
 
 function initData(){
-    confPath = confPath + "config.txt"
-    var configFile = new File(confPath)
-    configFile.open("r")
-    var fileStrMap = {}
-    while(!configFile.eof){
-        var str = configFile.readln();
-        if(str.indexOf("#")==0){
-            continue
-        }
-        var strArr = str.split("=");
-        fileStrMap[strArr[0]] = strArr[1];
-    }
+    // var pathArr = $.fileName.split("/");
+    // //盘符
+    // var confPath = pathArr[1] + ":/";
 
-    rootPath = fileStrMap["rootPath"] + "/"
-    exmlPath = fileStrMap["exmlPath"] + "/psdExport/"
+    // var pathLen = pathArr.length - 1;
+    // var rootPathLen = (pathArr.length>3) ? pathArr.length - 3 : pathArr.length - 1;
 
-    imageQuality = parseInt(fileStrMap["imageQuality"]);
+    // for(var i= 2; i<pathLen; i++){
+    //     confPath = confPath + pathArr[i] + "/"
+    // }
 
+    // confPath = confPath + "config.txt"
+    // var configFile = new File(confPath)
+    // configFile.open("r")
+    // var fileStrMap = {}
+    // while(!configFile.eof){
+    //     var str = configFile.readln();
+    //     if(str.indexOf("#")==0){
+    //         continue
+    //     }
+    //     var strArr = str.split("=");
+    //     fileStrMap[strArr[0]] = strArr[1];
+    // }
+
+    // rootPath = fileStrMap["rootPath"] + "/"
+    // exmlPath = fileStrMap["exmlPath"] + "/psdExport/"
+
+    // imageQuality = parseInt(fileStrMap["imageQuality"]);
+
+    rootPath = rootPath + "/"
+    exmlPath = exmlPath + "/psdExport/"
+    
+    jpgSaveOptions.quality = 10
+    pngSaveOptions.compression = 0;
 }
 
 function parsePSDFile(){
@@ -138,14 +173,14 @@ function parseLayer(layer, deepIndex) {
 /** 图层组*/
 function exportLayerSet( layerSet, deepIndex ){
     var layerSetString = "";
-    for (var i =0; i<layerSet.length; i++){
-        if(layerSet[i].typename == "LayerSet"){//是否是图层组
+    for (var i =0; i<layerSet.layers.length; i++){
+        if(layerSet.layers[i].typename == "LayerSet"){//是否是图层组
             //layerSetString = layerSetString + getLayerSetString( layerSet[i], deepIndex );
-            parseLayer( layerSet[i].layers, deepIndex+1 );//递归
+            exportLayerSet( layerSet.layers[i], deepIndex+1 );//递归
         }
         else{
             //一般图层
-            layerSetString = concatString(layerSetString, exportArtlayer( layerSet[i], deepIndex ))
+            layerSetString = concatString(layerSetString, exportArtlayer( layerSet.layers[i], deepIndex ))
         }
     }
     return layerSetString;
@@ -164,25 +199,40 @@ function exportArtlayer( layer, deepIndex ){
     }
 }
 
+function getTxtString(layer, deepIndex) {
+    if(layer.kind == LayerKind.TEXT){
+        var coords = getXYWH(layer)
+        var color = layer.textItem.color.rgb.hexValue;
+        var dir = layer.textItem.direction
+        if(color == undefined){
+            color = 0x60402f
+        }else{
+            color = '0x' + color;
+        }
+        var size = layer.textItem.size
+        if(size == undefined){
+            size = 25
+        }
+        size = Math.floor (size)
+        return LB + tabsDeep[deepIndex]+'<e:Label id="'+layer.name+'" text="'+layer.textItem.contents  +'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+size +'" multiline="true" wordWrap="true" textColor="'+color+'" fontFamily="SimHei"/>';
+    }
+}
+
 function getScaleImageString(layer, deepIndex) {
     var coords = getXYWH(layer)
     //导出图片
     // var arr = layer.name.split("@")
     // var grids = arr[1].split("_")//第五个的xy宽高
-    var grids = saveScalePiture(layer)
-    var gridStr = grids[0] + "," + grids[1] + "," + grids[2] + "," + grids[3]
+    var grids = saveScalePiture(layer);
+    var gridStr = grids[0] + "," + grids[1] + "," + grids[2] + "," + grids[3];
     
     return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" scale9Grid="'+gridStr+'"/>'
 }
 
-
 function getImageString(layer, deepIndex) {
-    var coords = getXYWH(layer)
-    
+    var coords = getXYWH(layer);
     //导出图片
     savePicture(layer);
-    
-    
     return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" />'
 }
 
@@ -203,7 +253,7 @@ function savePicture(layer){
     var nameStr = layer.name.split("_");
     var picName = "";
     var len = nameStr.length;
-    if(isJPG(layer)){
+    if(!isScaleImage(layer) && isJPG(layer)){
         len = nameStr.length - 1;
     }
     for(var i=0; i<len; i++){
@@ -226,11 +276,12 @@ function savePicture(layer){
     //设置图片输出的色彩范围为256色。
     option.colors = 256;
     option.format = SaveDocumentType.PNG;
-    option.PNG8 = false;
+    option.PNG8 = usePNG8;
     option.quality = imageQuality;//品质 。（0~100）。
+    option.transparency = true;
     
     var pictureType = "png"
-    if(isJPG(layer)){
+    if(!isScaleImage(layer) && isJPG(layer)){
         pictureType = "jpg"
         //设置图片输出的格式为GIF格式。
         option.format = SaveDocumentType.JPEG;
@@ -246,6 +297,7 @@ function savePicture(layer){
         return
     }
     imageExportPathMap[path] = path;
+    layer.rasterize (RasterizeType.SHAPE)
     
     layer.copy();
     //创建一个新文档，新文档的尺寸为拷贝到内存中图层的尺寸一致。
@@ -255,8 +307,8 @@ function savePicture(layer){
 	app.documents.add(pxWidth, pxHeight, doc.resolution, picName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
     var curdoc = app.documents.getByName (picName)
     //将内存中的图层，复制到新文档。
-    app.activeDocument.paste();
-    
+    var pasteLayer = app.activeDocument.paste();
+    pasteLayer.opacity = layer.opacity;
     //调用[activeDocument]对象的[exportDocument]方法，将新文档导出为SaveDocumentType图片。
     curdoc.exportDocument(file, ExportType.SAVEFORWEB, option);
     
@@ -271,23 +323,23 @@ function savePicture(layer){
 
 function validateScaleImage(layer, layerw, layerh, slicePaddingArr){
     if( (slicePaddingArr[0] + slicePaddingArr[2] - 4) > layerw ){
-        alert("九宫图像图层【" + layer.name +  "】九宫图片宽度 大于 图片宽度值了！");
+        //$.writeln("九宫图像图层【" + layer.name +  "】九宫图片宽度 大于 图片宽度值了！");
     }
     if( (slicePaddingArr[1] + slicePaddingArr[3] - 4) > layerh ){
-        alert("九宫图像图层【" + layer.name +  "】九宫图片高度 大于 图片高度值了！");
+        //$.writeln("九宫图像图层【" + layer.name +  "】九宫图片高度 大于 图片高度值了！");
     }
 }
 
 function needExportImage(file, layer, fileName) {
     if(file.exists){
-        if(isCommonImage(layer) && !isCoverCommonImage){
+        if(!isCoverCommonImage){
             file.close()
-            writeLog("文件已经存在--> " + fileName)
+            // writeLog("文件已经存在--> " + fileName)
             return false;
         }
-        if(!isCommonImage(layer) && !isCoverNonCommonImage){
+        if(!isCoverNonCommonImage){
             file.close()
-            writeLog("文件已经存在--> " + fileName)
+            // writeLog("文件已经存在--> " + fileName)
             return false;
         }
     }
@@ -360,11 +412,12 @@ function saveScalePiture(layer){
     //设置图片输出的色彩范围为256色。
     option.colors = 256;
     option.format = SaveDocumentType.PNG;
-    option.PNG8 = false;
+    option.PNG8 = usePNG8;
     option.quality = imageQuality;//品质 。（0~100）。
+    option.transparency = true;
     
     var pictureType = "png"
-    if(isJPG(layer)){
+    if(!isScaleImage(layer) && isJPG(layer)){
         pictureType = "jpg"
         //设置图片输出的格式为GIF格式。
         option.format = SaveDocumentType.JPEG;
@@ -390,12 +443,16 @@ function saveScalePiture(layer){
     app.preferences.typeUnits = TypeUnits.PIXELS;
     //创建一个新文档，新文档的尺寸为裁切后4个区域拼起来的尺寸,保存裁切后的图片，拼起来
     app.documents.add(pxWidth, pxHeight, dupDoc.resolution, picName, NewDocumentMode.RGB, DocumentFill.TRANSPARENT);
-    app.activeDocument.paste();
+    var pasteLayer = app.activeDocument.paste();
+    pasteLayer.opacity = layer.opacity;
 
     var doc4Scale = app.documents.getByName (picName)
     
     var width = doc4Scale.width;
     var height = doc4Scale.height;
+    if(width == undefined){
+        $.writeln ("undefinded");
+    }
 
     validateScaleImage(layer, layerW, layerH, slicePaddingArr);
 
@@ -462,7 +519,7 @@ function getImageName(layer) {
             }
         }
         picName = picName + "@" + middleXYWH[0] + "_" + middleXYWH[1] + "_" + middleXYWH[2] + "_" + middleXYWH[3];
-        if(isJPG(layer.name)){
+        if(!isScaleImage(layer) && isJPG(layer.name)){
             picName = picName + "_jpg";
         }else{
             picName = picName + "_png";
