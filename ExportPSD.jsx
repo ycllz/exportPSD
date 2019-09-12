@@ -146,7 +146,7 @@ var egretComponents = ["list", "item", "txt"];
  * 这个先不管，已经跟通用的自定义组件重合了
  * 
 */
-var commonComponents = [ "checkbox", "btn", "bar", "power", "price"];
+var commonComponents = [ "btn", "checkbox",  "bar", "power", "price"];
 
 var exportTypes = ["btn", "txt", "list", "item", "checkbox", "bar", "power", "price"]
 var exportTypesSkin = ["CommonBtn1_1Skin", "Label", "list", "item", "checkbox", "bar", "power", "price"]
