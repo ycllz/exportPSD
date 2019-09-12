@@ -21,7 +21,9 @@
         
         <e:Button id="dialogCloseBtn" icon="ui_common_gb02_btn_n" x="609" y="305" skinName="CloseBtn">
         <e:Button id="buy10" x="368" y="0" label="" icon="ui_cz_gm10g" skinName="Btn8Skin"/>
+
         
+        </e:Button>
         <e:Image source="ui_cm_p@0_bthb_png" y="284" horizontalCenter="0"/>
 
         <e:Image x="210" y="391" width="318" height="40" source="ui_cm_04_1@58_2_58_2_png" scale9Grid="58,1,2,2"/>
