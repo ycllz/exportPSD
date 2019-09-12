@@ -6,6 +6,14 @@
         "statussBar.prominentBackground": "#3399FF",
         "activityBar.background": "#5A0D2E",
         "titleBar.activeBackground": "#7E1341",
-        "titleBar.activeForeground": "#FFFCFD"
+        "titleBar.activeForeground": "#FFFCFD",
+        "activityBar.foreground": "#15202b",
+        "activityBar.inactiveForeground": "#15202b99",
+        "activityBarBadge.background": "#df00ad",
+        "activityBarBadge.foreground": "#e7e7e7",
+        "titleBar.inactiveBackground": "#00b3e699",
+        "titleBar.inactiveForeground": "#15202b99",
+        "statusBarItem.hoverBackground": "#008bb3",
+        "statusBar.foreground": "#15202b"
     }
 }

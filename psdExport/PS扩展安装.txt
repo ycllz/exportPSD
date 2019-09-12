@@ -1,0 +1,8 @@
+
+
+	把  重命名  这个文件夹复制到 C:\Program Files (x86)\Common Files\Adobe\CEP\extensions 这里，
+	
+	就是复制到 PS 的扩展文件夹就可以了 重启 PS 就可以用
+
+	
+	从 PS 的菜单 ：窗口 -->  扩展功能 -->  重命名 ，打开这个功能，点击重命名就会重命名最上面的图层
