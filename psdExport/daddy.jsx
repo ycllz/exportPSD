@@ -1,8 +1,12 @@
 ﻿
 
-var rootPath = "E:/new game/art/ui/assets";
-var exmlPath = "E:/new game/art/ui";
+// var rootPath = "E:/new game/art/ui/assets";
+// var exmlPath = "E:/new game/art/ui";
 
+//目录请配置在config.txt 文件中
+
+var rootPath = ""//"E:/stoneage/art/ui/assets";
+var exmlPath = ""//"E:/stoneage/art/ui";
 
 
 var imageQuality = 85;//导出图片质量
@@ -71,6 +75,41 @@ function initData(){
     // imageQuality = parseInt(fileStrMap["imageQuality"]);
     
     //增加功能：删除所有空图层
+    
+    //脚本运行路径 $.fileName
+    var pathArr = $.fileName.split("/");
+    //盘符
+    var confPath = pathArr[1] + ":/";
+    //rootPath = confPath;
+    scriptPath = confPath;
+
+    var pathLen = pathArr.length - 1;
+    var rootPathLen = (pathArr.length>3) ? pathArr.length - 3 : pathArr.length - 1;
+
+    for(var i= 2; i<pathLen; i++){
+        confPath = confPath + pathArr[i] + "/"
+        if(i<rootPathLen){
+            rootPath = rootPath + pathArr[i] + "/"
+        }
+    }
+    scriptPath = confPath;
+    //rootPath = rootPath + "总美术上传文件/ui/";
+    
+    confPath = confPath + "config.txt"
+    var configFile = new File(confPath)
+    configFile.open("r")
+    var fileStrMap = {}
+    while(!configFile.eof){
+        var str = configFile.readln();
+        if(str.indexOf("#")==0){
+            continue
+        }
+        var strArr = str.split("=");
+        fileStrMap[strArr[0]] = strArr[1];
+    }
+    
+    rootPath = fileStrMap["rootPath"]
+    exmlPath = fileStrMap["exmlPath"]
 
     rootPath = rootPath + "/"
     exmlPath = exmlPath + "/psdExport/"
@@ -147,7 +186,11 @@ function parsePSDFile(){
     for(var i=0; i<exLen; i++){
         app.activeDocument = dupDoc;
         var layer = exportLayers[i];
-        exmlContents = concatString(exmlContents, parseLayer(layer, deepIndex))
+        if(layer.visible){
+            app.activeDocument.activeLayer = layer;
+            exmlContents = concatString(exmlContents, parseLayer(layer, deepIndex))
+        }
+        
     }
     
 
@@ -193,49 +236,170 @@ function saveEXML(path, fileName, contents) {
 
 function parseLayer(layer, deepIndex) {
     exmlContents = ""
-    if(layer && layer.typename == "LayerSet"){//判断是否是图层组
+    if(layer && layer.visible && isListComponent (layer.name)){//列表，特殊的图层组
+        //exmlContents = concatString(exmlContents, exportList(layer, deepIndex))
+        exmlContents = exportList(layer, deepIndex)
+    }
+    else if(layer && layer.visible && isBtn(layer)){
+        //exmlContents = concatString(exmlContents, exportBtn(layer, deepIndex))
+        exmlContents = exportBtn(layer, deepIndex);
+    }
+    else if(layer && layer.typename == "LayerSet"){//判断是否是图层组
         // exmlContents = concatString(exmlContents, exportLayerSet( layer, deepIndex))
-        exmlContents = exportLayerSet(layer, deepIndex)
+        exmlContents = exportLayerSet(layer, deepIndex);
     }
     else if(layer){//图层，每个模块自己的图片 文本
         // exmlContents = concatString(exmlContents, exportArtlayer( layer, deepIndex))
-        exmlContents = exportArtlayer(layer, deepIndex)
+        exmlContents = exportArtlayer(layer, deepIndex);
     }
     return exmlContents;
 }
+
 /** 图层组*/
 function exportLayerSet( layerSet, deepIndex ){
     var layerSetString = "";
     for (var i =0; i<layerSet.layers.length; i++){
-        if(layerSet.layers[i].typename == "LayerSet"){//是否是图层组
-            //layerSetString = layerSetString + getLayerSetString( layerSet[i], deepIndex );
-            exportLayerSet( layerSet.layers[i], deepIndex+1 );//递归
+        var layer = layerSet.layers[i];
+        if(layer && layer.visible && isListComponent (layer.name)){//列表，特殊的图层组
+            layerSetString = concatString(layerSetString, exportList(layer, deepIndex))
+            // exmlContents = exportList(layer, deepIndex)
         }
-        else{
+        else if(layer && layer.visible && isBtn(layer)){
+            layerSetString = concatString(layerSetString, exportBtn(layer, deepIndex))
+            // exmlContents = exportBtn(layer, deepIndex);
+        }
+        else if(layer && layer.visible && layerSet.layers[i].typename == "LayerSet"){//是否是图层组
+            //layerSetString = layerSetString + getLayerSetString( layerSet[i], deepIndex );
+            //exportLayerSet( layerSet.layers[i], deepIndex+1 );//递归
+            layerSetString = concatString(layerSetString, exportLayerSet( layerSet.layers[i], deepIndex+1 ) );//递归
+        }
+        else if(layer && layer.visible){
             //一般图层
             layerSetString = concatString(layerSetString, exportArtlayer( layerSet.layers[i], deepIndex ))
         }
     }
+    // $.writeln (layerSet.name)
+    // $.writeln (layerSetString)
     return layerSetString;
 }
 /**一般图层*/
 function exportArtlayer( layer, deepIndex ){
     //9宫的才需要在程序中设定宽高，其他的不用
     if(isSpaceNameLayer (layer)){
-        return ""
+        //return ""
     }
     if(isCopyLayer(layer)){
         return "";
     }
-    else if( isScaleImage (layer) ){
-        return getScaleImageString(layer, deepIndex)
+    else if(layer.visible &&  isScaleImage (layer) ){
+        var constr = getScaleImageString(layer, deepIndex);
+        return constr
     }
-    else if( isUIPicture(layer) ){
+    else if(layer.visible &&  isUIPicture(layer) ){
         return getImageString(layer, deepIndex)
     }
-    else if( isTxt(layer) ){
+    else if(layer.visible &&  isTxt(layer) ){
         return getTxtString(layer, deepIndex)
     }
+}
+
+/** 列表*/
+function exportList( layer, deepIndex ){
+    var coords = getXYWH(layer);
+
+    var layout = ""
+    if(layer.name.indexOf("h")>=0 || layer.name.indexOf("H")>=0){
+        layout = '<e:HorizontalLayout gap="5"/>'
+    }else if(layer.name.indexOf("v")>=0 || layer.name.indexOf("V")>=0){
+        layout = '<e:VerticalLayout gap="5"/>'
+    }else{
+        // list_t_x :x列纵向滚动，行是无限的
+        var arr = layer.name.split("_")
+        var requestedColumnCount = arr[2]
+        if(requestedColumnCount == undefined){
+            requestedColumnCount = 1
+        }
+        layout = '<e:TileLayout horizontalGap="5" verticalGap="5" requestedColumnCount="'+ requestedColumnCount +'"/>'
+    }
+    
+    var str = ""
+    str = str + tabsDeep[deepIndex] + '<e:Scroller id="scroller'+ layer.itemIndex +'" x="'+ coords[0] +'" y="'+ coords[1] +'" width="' + coords[2] + '" height="' + coords[3] + '" >'
+    str = str + LB + tabsDeep[deepIndex+1] + '<e:List id="' + layer.name + layer.itemIndex  + '" >'
+    str = str + LB + tabsDeep[deepIndex+1] + '<e:layout>'
+    str = str + LB + tabsDeep[deepIndex+1] + layout
+    str = str + LB + tabsDeep[deepIndex+1] + '</e:layout>'
+    str = str + LB + tabsDeep[deepIndex+1] + '</e:List>'
+    str = str + LB + tabsDeep[deepIndex] + '</e:Scroller>'
+    
+    parseItem(layer)
+    
+    return str;
+}
+
+function parseItem(layer) {
+    var itemstring = exportListItem(layer);
+    var coords = getXYWH(layer)
+    
+    var className = psdFileName + "Item"
+    exmlContents =
+    '<?xml version="1.0" encoding="utf-8"?>'+LB
+    +'<e:Skin class="' + className + 'Skin" width="'+coords[2]+'" height="'+coords[3]+'" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" >'+LB
+    +itemstring+LB
+    +'</e:Skin>'
+    
+    saveEXML(exmlPath + psdFileName + slantingBar, className, exmlContents)
+}
+
+function exportListItem( layerSet ){
+    var itemLayer = layerSet;
+    if(layerSet.typename == "LayerSet"){
+        for (var i =0; i<layerSet.layers.length; i++){
+            var layer = layerSet.layers[i];
+            if(layer.visible && isItemComponent(layer.name)){
+                item = layerSet.layers[i];
+                itemLayer = item;
+                break;
+            }
+        }
+    }
+    
+    /** itemIndex
+        
+        <?xml version="1.0" encoding="utf-8"?>
+        <e:Skin class="ChildEquipItemSkin" width="130" height="175" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" >
+        
+        </e:Skin>
+    */
+    var componentString = "";
+    if(itemLayer){
+        if(itemLayer.typename == "LayerSet"){//是否是图层组
+            componentString= concatString(componentString, exportLayerSet(itemLayer, 1))
+        }
+        else{
+            //一般图层
+            componentString = concatString(componentString, exportArtlayer( layerSet[i]))
+        }
+    }
+    return componentString;
+}
+
+function exportBtn(layerSet, deepIndex) {
+    //<e:Button id="buy10" x="368" y="0" label="" icon="ui_cz_gm10g" skinName="Btn8Skin"/>
+    var layerSetString = "";
+    var layername = ""
+    var txt = ""
+    var coords = getXYWH(layerSet)
+    for (var i =0; i<layerSet.layers.length; i++){
+        var layer = layerSet.layers[i];
+        if(layer.visible && isUIPicture(layer)){
+            layername = getImageName(layer)
+            // layerSetString = concatString(layerSetString, exportArtlayer( layer, deepIndex ))
+        }else if(layer.visible && isTxt(layer)){
+            txt = layer.textItem.contents
+            // layerSetString + concatString(layerSetString, exportArtlayer( layer, deepIndex ))
+        }
+    }
+    return LB + tabsDeep[deepIndex]+'<e:Button id="btn'+layerSet.itemIndex+'" x="'+coords[0]+'" y="'+coords[1]+'" label="'+txt+'" icon="'+layername+'" skinName="CommonBtn2Skin"/>';
 }
 
 function getTxtString(layer, deepIndex) {
@@ -253,7 +417,9 @@ function getTxtString(layer, deepIndex) {
             size = 25
         }
         size = Math.floor (size)
-        return LB + tabsDeep[deepIndex]+'<e:Label id="'+layer.name+layer.itemIndex+'" text="'+layer.textItem.contents  +'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+size +'" multiline="true" wordWrap="true" textColor="'+color+'" fontFamily="SimHei"/>';
+        var txtid = layer.name.replace ("拷贝", "Copy");
+        txtid = txtid.replace(/\s+/g,"")
+        return LB + tabsDeep[deepIndex]+'<e:Label id="'+txtid+layer.itemIndex+'" text="'+layer.textItem.contents  +'" x="'+coords[0]+'" y="'+coords[1]+'" multiline="true" wordWrap="true" textColor="'+color+'" />';
     }
 }
 
@@ -274,8 +440,8 @@ function getScaleImageString(layer, deepIndex) {
 
     var grids = saveScalePiture(layer);
     var gridStr = grids[0] + "," + grids[1] + "," + grids[2] + "," + grids[3];
-    
-    return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" scale9Grid="'+gridStr+'"/>' + percentString
+    var scaleStr = LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" scale9Grid="'+gridStr+'"/>' + percentString;
+    return scaleStr;
 }
 
 function getImageString(layer, deepIndex) {
@@ -579,21 +745,14 @@ function getImageName(layer) {
         //九宫图
         nameArr = layer.name.split("@");
         var middleXYWH = nameArr[1].split("_");
-        var picName = "";
-        var nameLen = nameArr.length;
-        for(var i=0; i<nameLen; i++){
-            if(picName == ""){
-                picName = nameArr[i];
-            }else{
-                picName = picName + "_" + nameArr[i];
-            }
-        }
+        var picName = nameArr[0];
         picName = picName + "@" + middleXYWH[0] + "_" + middleXYWH[1] + "_" + middleXYWH[2] + "_" + middleXYWH[3];
         if(!isScaleImage(layer) && isJPG(layer.name)){
             picName = picName + "_jpg";
         }else{
             picName = picName + "_png";
         }
+        sourceName = picName;
         hasSuffix = true;
     }else{
         //非九宫图
@@ -702,7 +861,7 @@ function isExportLayer( layer ){
 }
 
 function isTxt( layer ){
-    if(layer.name.indexOf("txt")>=0){
+    if(layer.kind==LayerKind.TEXT && layer.name.indexOf("txt")>=0){
         return true;
     }
     return false;
@@ -741,15 +900,41 @@ function isPNG(layer) {
 
 function isCopyLayer(layer){
     var layerName = layer.name;
-    if(layerName.indexOf ("拷贝")>=0){
+    if(isUIPicture(layer) && layerName.indexOf ("拷贝")>=0){
+        //如果是ui 且名字携带拷贝俩字，就不导出了
         return true;
     }
     return false;
 }
 
 function isSpaceNameLayer(layer){
-    if(layer.name.indexOf (" ")>=0){
+    if(isUIPicture(layer) && layer.name.indexOf("图层") >= 0){
+        return false;
+    }
+    if(isUIPicture(layer) && layer.name.indexOf ("layer") >=0 ){
+        return false;
+    }
+    if(isUIPicture(layer) && layer.name.indexOf(" ")>=0){
         spaceNameLayer.push (layer.name)
+        return true;
+    }
+    return false;
+}
+function isBtn(layer) {
+    if(layer && layer.name.indexOf("ui_")<0 && layer.name.indexOf("btn")>=0){
+        return true;
+    }
+    return false;
+}
+
+function isListComponent( layername ){
+    if(layername.indexOf("list")>=0){
+        return true;
+    }
+    return false;
+}
+function isItemComponent( layername ){
+    if(layername.indexOf("item")>=0){
         return true;
     }
     return false;

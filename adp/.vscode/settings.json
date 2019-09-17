@@ -3,6 +3,13 @@
         "tab.unfocusedActiveBorder": "#fff0",
         "activityBar.background": "#00296B",
         "titleBar.activeBackground": "#003996",
-        "titleBar.activeForeground": "#FAFCFF"
-    }
+        "titleBar.activeForeground": "#FAFCFF",
+        "statusBar.background": "#19b0bb"
+    },
+    // "vetur.format.options.tabSize": 4,
+    // // "prettier.useTabs": true,
+    // "editor.tabSize": 4,
+    // // "workbench.editor.tabSizing": "fit",
+    // "prettier.tabWidth": 4,
+    
 }

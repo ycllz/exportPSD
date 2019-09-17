@@ -1,4 +1,4 @@
-﻿
+
 
 /**
  * 
@@ -167,7 +167,7 @@ var image2ComponentMap;//图片对应的组件 BG 这类背景图组件
  */
 var componentSkinListMap;
 /** key：组件皮肤名 value：类名 */
-var componentListClassMap;
+var skin2Class;
 /**
  * commonComponents
  * 默认通用的组件 btn 命名的psd图层使用 CommonBtn1_1Skin 等默认
@@ -221,16 +221,16 @@ function initData(){
     
     //如果该图层是已经制作出来的组件，直接skinname直接就是这个组件
     componentSkinListMap = {}
-    componentListClassMap = {}
+    skin2Class = {}
     
     componentSkinListMap["BG"] = "BG";
     for(var i=2; i<=BGLen; i++){
         componentSkinListMap["BG"+i] = "BG"+i;
-        componentListClassMap["BG"+i] = "Component"
+        skin2Class["BG"+i] = "Component"
     }
     for(var i=0; i<componentSkinList.length; i++){
         componentSkinListMap[componentSkinList[i]] = componentSkinList[i];
-        componentListClassMap[componentSkinList[i]] = componentListClass[i]
+        skin2Class[componentSkinList[i]] = componentListClass[i]
     }
 
 
@@ -996,7 +996,7 @@ function getImageName(layer) {
 
 function getCustomComponentString(layer, deepIndex){
     var skinName = layer.name;
-    var className = componentListClassMap[skinName]
+    var className = skin2Class[skinName]
     var coords = getXYWH(layer)
     var defString = LB + tabsDeep[deepIndex] + '<'+defTypeMap[className]+':'+className+' skinName="'+skinName+'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" />'
     return defString;

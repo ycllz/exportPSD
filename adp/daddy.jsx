@@ -1,12 +1,18 @@
 ﻿
 
-var rootPath = "E:/stoneage/art/ui/assets";
-var exmlPath = "E:/stoneage/art/ui";
+// var rootPath = "E:/new game/art/ui/assets";
+// var exmlPath = "E:/new game/art/ui";
 
-var imageQuality = 85;
-var usePNG8 = false;
-var isCoverCommonImage = true;
-var isCoverNonCommonImage = true;
+//目录请配置在config.txt 文件中
+
+var rootPath = ""//"E:/stoneage/art/ui/assets";
+var exmlPath = ""//"E:/stoneage/art/ui";
+
+
+var imageQuality = 85;//导出图片质量
+var usePNG8 = false;//是否使用png8 导出图片
+var isCoverCommonImage = false;//是否重新导出通用组件，命名带 cm 的
+var isCoverNonCommonImage = true;//是否重新导出非通用组件 命名不带 cm 的
 
 
 var exmlContents="";
@@ -20,26 +26,23 @@ var scaleImage = 1
 var dupDoc;
 var imageExportPathMap = {}
 var exportLayers = []
+var spaceNameLayer = []
 
 //定义一个变量[doc]，表示当前文档。
 var doc = app.activeDocument;
 
-pngSaveOptions = new PNGSaveOptions();
-pngSaveOptions.compression = 0
-pngSaveOptions.interlaced = false
+var rootDir
+var exmlDir
+var psdFileName
 
-var jpgSaveOptions = new JPEGSaveOptions();
-jpgSaveOptions.embedColorProfile = true;
-jpgSaveOptions.formatOptions = FormatOptions.STANDARDBASELINE;
-jpgSaveOptions.matte = MatteType.NONE;
-jpgSaveOptions.quality = 10
+var pngSaveOptions
+var jpgSaveOptions
 
-// imageMap2Component["图片名称"] = "组件名称"
-var imageMap2Component = {};
-
-
+var pathExist = true
 initData();
-parsePSDFile();
+if(pathExist){
+    parsePSDFile();
+}
 
 function initData(){
     // var pathArr = $.fileName.split("/");
@@ -70,12 +73,74 @@ function initData(){
     // exmlPath = fileStrMap["exmlPath"] + "/psdExport/"
 
     // imageQuality = parseInt(fileStrMap["imageQuality"]);
+    
+    //增加功能：删除所有空图层
+    
+    //脚本运行路径 $.fileName
+    var pathArr = $.fileName.split("/");
+    //盘符
+    var confPath = pathArr[1] + ":/";
+    //rootPath = confPath;
+    scriptPath = confPath;
+
+    var pathLen = pathArr.length - 1;
+    var rootPathLen = (pathArr.length>3) ? pathArr.length - 3 : pathArr.length - 1;
+
+    for(var i= 2; i<pathLen; i++){
+        confPath = confPath + pathArr[i] + "/"
+        if(i<rootPathLen){
+            rootPath = rootPath + pathArr[i] + "/"
+        }
+    }
+    scriptPath = confPath;
+    //rootPath = rootPath + "总美术上传文件/ui/";
+    
+    confPath = confPath + "config.txt"
+    var configFile = new File(confPath)
+    configFile.open("r")
+    var fileStrMap = {}
+    while(!configFile.eof){
+        var str = configFile.readln();
+        if(str.indexOf("#")==0){
+            continue
+        }
+        var strArr = str.split("=");
+        fileStrMap[strArr[0]] = strArr[1];
+    }
+    
+    rootPath = fileStrMap["rootPath"]
+    exmlPath = fileStrMap["exmlPath"]
 
     rootPath = rootPath + "/"
     exmlPath = exmlPath + "/psdExport/"
     
+    pngSaveOptions = new PNGSaveOptions();
+    pngSaveOptions.compression = 0
+    pngSaveOptions.interlaced = false
+
+    jpgSaveOptions = new JPEGSaveOptions();
+    jpgSaveOptions.embedColorProfile = true;
+    jpgSaveOptions.formatOptions = FormatOptions.STANDARDBASELINE;
+    jpgSaveOptions.matte = MatteType.NONE;
+    jpgSaveOptions.quality = 10
+    
     jpgSaveOptions.quality = 10
     pngSaveOptions.compression = 0;
+
+    try {
+        var folder = new Folder(rootPath)
+        if(folder.exists){
+            pathExist = true
+        }else{
+            pathExist = false
+        }
+    } catch (error) {
+        pathExist = false
+    }
+    if(!pathExist){
+        alert("目录不存在 -> " + rootPath)
+    }
+    
 }
 
 function parsePSDFile(){
@@ -93,8 +158,8 @@ function parsePSDFile(){
     if(psdFileName==""){
         psdFileName = name;
     }
-	var rootDir = rootPath;//app.activeDocument.path + 
-    var exmlDir = exmlPath + psdFileName + "/";
+	rootDir = rootPath;//app.activeDocument.path + 
+    exmlDir = exmlPath + psdFileName + "/";
     new Folder( rootDir ).create();
     new Folder( exmlDir ).create();
     
@@ -121,7 +186,11 @@ function parsePSDFile(){
     for(var i=0; i<exLen; i++){
         app.activeDocument = dupDoc;
         var layer = exportLayers[i];
-        exmlContents = concatString(exmlContents, parseLayer(layer, deepIndex))
+        if(layer.visible){
+            app.activeDocument.activeLayer = layer;
+            exmlContents = concatString(exmlContents, parseLayer(layer, deepIndex))
+        }
+        
     }
     
 
@@ -134,6 +203,7 @@ function parsePSDFile(){
     +'</e:Skin>'
     
     saveEXML(exmlDir, psdFileName, exmlContents)
+    exportDocument(dupDoc)
 
     activeDocument.close(SaveOptions.DONOTSAVECHANGES);
 
@@ -141,8 +211,14 @@ function parsePSDFile(){
     for(var key in imageExportPathMap){
         picPath = picPath + imageExportPathMap[key] + "\n"
     }
+    var spaceNameStr = "\n\n名字包含空格图层：\n"
+    for(var key in spaceNameLayer){
+        spaceNameStr = spaceNameStr + spaceNameLayer[key] + "\n"
+    }
+    spaceNameStr = spaceNameStr + "\n";
+    
     var strEnd = "\n\n请记得也把导出exml文件提交svn\n\n图片该怎么处理就怎么处理";
-    var alertStr = "本次导出的图片文件都在目录：\n" + picPath + "\n本次导出的exml文件都在目录：\n" + exmlDir + strEnd;
+    var alertStr = "本次导出的图片文件都在目录：\n" + picPath + "\n本次导出的exml文件都在目录：\n" + exmlDir + spaceNameStr + strEnd;
     alert(alertStr)
     $.gc();
 }
@@ -160,43 +236,170 @@ function saveEXML(path, fileName, contents) {
 
 function parseLayer(layer, deepIndex) {
     exmlContents = ""
-    if(layer && layer.typename == "LayerSet"){//判断是否是图层组
+    if(layer && layer.visible && isListComponent (layer.name)){//列表，特殊的图层组
+        //exmlContents = concatString(exmlContents, exportList(layer, deepIndex))
+        exmlContents = exportList(layer, deepIndex)
+    }
+    else if(layer && layer.visible && isBtn(layer)){
+        //exmlContents = concatString(exmlContents, exportBtn(layer, deepIndex))
+        exmlContents = exportBtn(layer, deepIndex);
+    }
+    else if(layer && layer.typename == "LayerSet"){//判断是否是图层组
         // exmlContents = concatString(exmlContents, exportLayerSet( layer, deepIndex))
-        exmlContents = exportLayerSet(layer, deepIndex)
+        exmlContents = exportLayerSet(layer, deepIndex);
     }
     else if(layer){//图层，每个模块自己的图片 文本
         // exmlContents = concatString(exmlContents, exportArtlayer( layer, deepIndex))
-        exmlContents = exportArtlayer(layer, deepIndex)
+        exmlContents = exportArtlayer(layer, deepIndex);
     }
     return exmlContents;
 }
+
 /** 图层组*/
 function exportLayerSet( layerSet, deepIndex ){
     var layerSetString = "";
     for (var i =0; i<layerSet.layers.length; i++){
-        if(layerSet.layers[i].typename == "LayerSet"){//是否是图层组
-            //layerSetString = layerSetString + getLayerSetString( layerSet[i], deepIndex );
-            exportLayerSet( layerSet.layers[i], deepIndex+1 );//递归
+        var layer = layerSet.layers[i];
+        if(layer && layer.visible && isListComponent (layer.name)){//列表，特殊的图层组
+            layerSetString = concatString(layerSetString, exportList(layer, deepIndex))
+            // exmlContents = exportList(layer, deepIndex)
         }
-        else{
+        else if(layer && layer.visible && isBtn(layer)){
+            layerSetString = concatString(layerSetString, exportBtn(layer, deepIndex))
+            // exmlContents = exportBtn(layer, deepIndex);
+        }
+        else if(layer && layer.visible && layerSet.layers[i].typename == "LayerSet"){//是否是图层组
+            //layerSetString = layerSetString + getLayerSetString( layerSet[i], deepIndex );
+            //exportLayerSet( layerSet.layers[i], deepIndex+1 );//递归
+            layerSetString = concatString(layerSetString, exportLayerSet( layerSet.layers[i], deepIndex+1 ) );//递归
+        }
+        else if(layer && layer.visible){
             //一般图层
             layerSetString = concatString(layerSetString, exportArtlayer( layerSet.layers[i], deepIndex ))
         }
     }
+    // $.writeln (layerSet.name)
+    // $.writeln (layerSetString)
     return layerSetString;
 }
 /**一般图层*/
 function exportArtlayer( layer, deepIndex ){
     //9宫的才需要在程序中设定宽高，其他的不用
-    if( isScaleImage (layer) ){
-        return getScaleImageString(layer, deepIndex)
+    if(isSpaceNameLayer (layer)){
+        //return ""
     }
-    else if( isUIPicture(layer) ){
+    if(isCopyLayer(layer)){
+        return "";
+    }
+    else if(layer.visible &&  isScaleImage (layer) ){
+        var constr = getScaleImageString(layer, deepIndex);
+        return constr
+    }
+    else if(layer.visible &&  isUIPicture(layer) ){
         return getImageString(layer, deepIndex)
     }
-    else if( isTxt(layer) ){
+    else if(layer.visible &&  isTxt(layer) ){
         return getTxtString(layer, deepIndex)
     }
+}
+
+/** 列表*/
+function exportList( layer, deepIndex ){
+    var coords = getXYWH(layer);
+
+    var layout = ""
+    if(layer.name.indexOf("h")>=0 || layer.name.indexOf("H")>=0){
+        layout = '<e:HorizontalLayout gap="5"/>'
+    }else if(layer.name.indexOf("v")>=0 || layer.name.indexOf("V")>=0){
+        layout = '<e:VerticalLayout gap="5"/>'
+    }else{
+        // list_t_x :x列纵向滚动，行是无限的
+        var arr = layer.name.split("_")
+        var requestedColumnCount = arr[2]
+        if(requestedColumnCount == undefined){
+            requestedColumnCount = 1
+        }
+        layout = '<e:TileLayout horizontalGap="5" verticalGap="5" requestedColumnCount="'+ requestedColumnCount +'"/>'
+    }
+    
+    var str = ""
+    str = str + tabsDeep[deepIndex] + '<e:Scroller id="scroller'+ layer.itemIndex +'" x="'+ coords[0] +'" y="'+ coords[1] +'" width="' + coords[2] + '" height="' + coords[3] + '" >'
+    str = str + LB + tabsDeep[deepIndex+1] + '<e:List id="' + layer.name + layer.itemIndex  + '" >'
+    str = str + LB + tabsDeep[deepIndex+1] + '<e:layout>'
+    str = str + LB + tabsDeep[deepIndex+1] + layout
+    str = str + LB + tabsDeep[deepIndex+1] + '</e:layout>'
+    str = str + LB + tabsDeep[deepIndex+1] + '</e:List>'
+    str = str + LB + tabsDeep[deepIndex] + '</e:Scroller>'
+    
+    parseItem(layer)
+    
+    return str;
+}
+
+function parseItem(layer) {
+    var itemstring = exportListItem(layer);
+    var coords = getXYWH(layer)
+    
+    var className = psdFileName + "Item"
+    exmlContents =
+    '<?xml version="1.0" encoding="utf-8"?>'+LB
+    +'<e:Skin class="' + className + 'Skin" width="'+coords[2]+'" height="'+coords[3]+'" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" >'+LB
+    +itemstring+LB
+    +'</e:Skin>'
+    
+    saveEXML(exmlPath + psdFileName + slantingBar, className, exmlContents)
+}
+
+function exportListItem( layerSet ){
+    var itemLayer = layerSet;
+    if(layerSet.typename == "LayerSet"){
+        for (var i =0; i<layerSet.layers.length; i++){
+            var layer = layerSet.layers[i];
+            if(layer.visible && isItemComponent(layer.name)){
+                item = layerSet.layers[i];
+                itemLayer = item;
+                break;
+            }
+        }
+    }
+    
+    /** itemIndex
+        
+        <?xml version="1.0" encoding="utf-8"?>
+        <e:Skin class="ChildEquipItemSkin" width="130" height="175" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" >
+        
+        </e:Skin>
+    */
+    var componentString = "";
+    if(itemLayer){
+        if(itemLayer.typename == "LayerSet"){//是否是图层组
+            componentString= concatString(componentString, exportLayerSet(itemLayer, 1))
+        }
+        else{
+            //一般图层
+            componentString = concatString(componentString, exportArtlayer( layerSet[i]))
+        }
+    }
+    return componentString;
+}
+
+function exportBtn(layerSet, deepIndex) {
+    //<e:Button id="buy10" x="368" y="0" label="" icon="ui_cz_gm10g" skinName="Btn8Skin"/>
+    var layerSetString = "";
+    var layername = ""
+    var txt = ""
+    var coords = getXYWH(layerSet)
+    for (var i =0; i<layerSet.layers.length; i++){
+        var layer = layerSet.layers[i];
+        if(layer.visible && isUIPicture(layer)){
+            layername = getImageName(layer)
+            // layerSetString = concatString(layerSetString, exportArtlayer( layer, deepIndex ))
+        }else if(layer.visible && isTxt(layer)){
+            txt = layer.textItem.contents
+            // layerSetString + concatString(layerSetString, exportArtlayer( layer, deepIndex ))
+        }
+    }
+    return LB + tabsDeep[deepIndex]+'<e:Button id="btn'+layerSet.itemIndex+'" x="'+coords[0]+'" y="'+coords[1]+'" label="'+txt+'" icon="'+layername+'" skinName="CommonBtn2Skin"/>';
 }
 
 function getTxtString(layer, deepIndex) {
@@ -214,7 +417,9 @@ function getTxtString(layer, deepIndex) {
             size = 25
         }
         size = Math.floor (size)
-        return LB + tabsDeep[deepIndex]+'<e:Label id="'+layer.name+'" text="'+layer.textItem.contents  +'" x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+size +'" multiline="true" wordWrap="true" textColor="'+color+'" fontFamily="SimHei"/>';
+        var txtid = layer.name.replace ("拷贝", "Copy");
+        txtid = txtid.replace(/\s+/g,"")
+        return LB + tabsDeep[deepIndex]+'<e:Label id="'+txtid+layer.itemIndex+'" text="'+layer.textItem.contents  +'" x="'+coords[0]+'" y="'+coords[1]+'" multiline="true" wordWrap="true" textColor="'+color+'" />';
     }
 }
 
@@ -223,17 +428,37 @@ function getScaleImageString(layer, deepIndex) {
     //导出图片
     // var arr = layer.name.split("@")
     // var grids = arr[1].split("_")//第五个的xy宽高
+    var layernameAndPercent = trimPercent(layer)
+    var layername = layernameAndPercent[0]
+    var percent = layernameAndPercent[1]
+    var percentString = ''
+    if(percent==undefined || percent==""){
+        
+    }else{
+        percentString = '<!--'+ percent + '-->'
+    }
+
     var grids = saveScalePiture(layer);
     var gridStr = grids[0] + "," + grids[1] + "," + grids[2] + "," + grids[3];
-    
-    return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" scale9Grid="'+gridStr+'"/>'
+    var scaleStr = LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" scale9Grid="'+gridStr+'"/>' + percentString;
+    return scaleStr;
 }
 
 function getImageString(layer, deepIndex) {
     var coords = getXYWH(layer);
+    var layernameAndPercent = trimPercent(layer)
+    var layername = layernameAndPercent[0]
+    var percent = layernameAndPercent[1]
+    var percentString = ''
+    if(percent==undefined || percent==""){
+        
+    }else{
+        percentString = '<!--'+ percent + '-->'
+    }
+
     //导出图片
     savePicture(layer);
-    return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" />'
+    return LB + tabsDeep[deepIndex+1] +'<e:Image x="'+coords[0]+'" y="'+coords[1]+'" width="'+coords[2]+'" height="'+coords[3]+'" source="'+getImageName(layer)+'" />' + percentString
 }
 
 function savePicture(layer){
@@ -249,8 +474,12 @@ function savePicture(layer){
     //var arr = layer.name.split("@")
     //var grids = arr[1].split("_")
     //var nameStr = arr[0].split("_")
+
+    var layernameAndPercent = trimPercent(layer)
+    var layername = layernameAndPercent[0]
+    var percent = layernameAndPercent[1]
     
-    var nameStr = layer.name.split("_");
+    var nameStr = layername.split("_");
     var picName = "";
     var len = nameStr.length;
     if(!isScaleImage(layer) && isJPG(layer)){
@@ -349,10 +578,14 @@ function needExportImage(file, layer, fileName) {
 function saveScalePiture(layer){
     
     var layerXYWh = getXYWH (layer)
+
+    var layernameAndPercent = trimPercent(layer)
+    var layername = layernameAndPercent[0]
+    var percent = layernameAndPercent[1]
     
-    var arr = layer.name.split("@")
+    var arr = layername.split("@")
     var nameStr = arr[0].split("_")
-    var middleXYWH = arr[1].split("_")//第五个的xy宽高
+    var middleXYWH = arr[1].split("_")//中间矩形的xy宽高
     
     
     var layerX = Number(layerXYWh[0])
@@ -431,10 +664,11 @@ function saveScalePiture(layer){
     if(!needExportImage(file, layer, scaleDocName)){
         return middleXYWH
     }
+
+    layer.copy();
+    
     imageExportPathMap[path] = path;
     
-    layer.copy();
-
     var pxWidth = new UnitValue( (layerW) + " px");
     var pxHeight = new UnitValue( (layerH) + " px");
 
@@ -482,7 +716,9 @@ function saveScalePiture(layer){
         newStem.translate(deltaX,deltaY);
     }
     originLayer.visible = false;
-    doc4Scale.mergeVisibleLayers();
+    if(doc4Scale.layers.length>1){
+        doc4Scale.mergeVisibleLayers();
+    }
     doc4Scale.trim (TrimType.TRANSPARENT, true, true, true, true)
 
     /******************* 保存图片 *******************/
@@ -509,21 +745,14 @@ function getImageName(layer) {
         //九宫图
         nameArr = layer.name.split("@");
         var middleXYWH = nameArr[1].split("_");
-        var picName = "";
-        var nameLen = nameArr.length;
-        for(var i=0; i<nameLen; i++){
-            if(picName == ""){
-                picName = nameArr[i];
-            }else{
-                picName = picName + "_" + nameArr[i];
-            }
-        }
+        var picName = nameArr[0];
         picName = picName + "@" + middleXYWH[0] + "_" + middleXYWH[1] + "_" + middleXYWH[2] + "_" + middleXYWH[3];
         if(!isScaleImage(layer) && isJPG(layer.name)){
             picName = picName + "_jpg";
         }else{
             picName = picName + "_png";
         }
+        sourceName = picName;
         hasSuffix = true;
     }else{
         //非九宫图
@@ -570,6 +799,32 @@ function getXYWH(layer) {
     return [xcoord, ycoord, layerRealWidth, layerRealHeight];
 }
 
+/**[trimName, percentStr] */
+function trimPercent(layer) {
+    var layername = layer.name;
+    var trimName = layer.name;
+    var percent4Image = ""
+    var xiahuaxian = 0
+    if(!!layer){
+        layername = layer.name + "";
+        var baifenbi = layername.indexOf("%");
+        if(baifenbi>=0){
+            for(var i=baifenbi; i>=0; i--){
+                var curChar = layername[i]
+                if(curChar == "_"){
+                    xiahuaxian = i;
+                    break;
+                }
+            }
+            var percentStr = layername.substring(xiahuaxian, baifenbi+1);
+            percent4Image = percentStr;
+            trimName = layername.replace(percentStr, "")
+        }
+    }
+    return [trimName, percent4Image]
+    
+}
+
 
 function concatString(str1, str2) {
     var exchangestr1 = exchangeString(str1)
@@ -606,7 +861,7 @@ function isExportLayer( layer ){
 }
 
 function isTxt( layer ){
-    if(layer.name.indexOf("txt")>=0){
+    if(layer.kind==LayerKind.TEXT && layer.name.indexOf("txt")>=0){
         return true;
     }
     return false;
@@ -643,3 +898,72 @@ function isPNG(layer) {
     return false
 }
 
+function isCopyLayer(layer){
+    var layerName = layer.name;
+    if(isUIPicture(layer) && layerName.indexOf ("拷贝")>=0){
+        //如果是ui 且名字携带拷贝俩字，就不导出了
+        return true;
+    }
+    return false;
+}
+
+function isSpaceNameLayer(layer){
+    if(isUIPicture(layer) && layer.name.indexOf("图层") >= 0){
+        return false;
+    }
+    if(isUIPicture(layer) && layer.name.indexOf ("layer") >=0 ){
+        return false;
+    }
+    if(isUIPicture(layer) && layer.name.indexOf(" ")>=0){
+        spaceNameLayer.push (layer.name)
+        return true;
+    }
+    return false;
+}
+function isBtn(layer) {
+    if(layer && layer.name.indexOf("ui_")<0 && layer.name.indexOf("btn")>=0){
+        return true;
+    }
+    return false;
+}
+
+function isListComponent( layername ){
+    if(layername.indexOf("list")>=0){
+        return true;
+    }
+    return false;
+}
+function isItemComponent( layername ){
+    if(layername.indexOf("item")>=0){
+        return true;
+    }
+    return false;
+}
+
+function exportDocument(doc) {
+    var option = new ExportOptionsSaveForWeb();
+    //设置图片输出时支持透明度。
+    option.transparency = true;
+    //设置图片输出的色彩范围为256色。
+    option.colors = 256;
+    option.format = SaveDocumentType.JPEG;
+    option.PNG8 = usePNG8;
+    option.quality = imageQuality;//品质 。（0~100）。
+    option.transparency = true;
+    
+    var fileName = exmlDir + psdFileName + ".jpg"
+    //定义一个变量[file]，作为图层输出的路径。
+    var file = new File(fileName);
+    
+    //doc.rasterizeAllLayers()
+    if(doc.layers.length>1){
+        doc.mergeVisibleLayers()
+    }
+    
+    
+    //调用[activeDocument]对象的[exportDocument]方法，将新文档导出为SaveDocumentType图片。
+    doc.exportDocument(file, ExportType.SAVEFORWEB, option);
+    
+    file.close();
+    $.gc()
+}
