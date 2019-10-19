@@ -1,0 +1,7 @@
+﻿#行开头是井号的是注释，等号左右不要包含空格，如 xx = yy 这样是不行的，程序没有过滤这种空格
+
+#导出图片存储根目录
+rootPath=E:/stoneage/art/ui/assets
+
+#导出的exml文件根目录
+exmlPath=E:/stoneage/art/ui
